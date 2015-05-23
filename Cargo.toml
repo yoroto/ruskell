@@ -1,0 +1,4 @@
+[package]
+name = "raskell"
+version = "0.1.0"
+authors = ["March Liu <march.liu@gmail.com>"]
