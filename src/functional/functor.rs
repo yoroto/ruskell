@@ -1,5 +1,6 @@
 use std::vec::Vec;
 use std::result::Result;
+use std::option::Option;
 
 pub trait Functor<A, B, F> {
     type Output;
@@ -44,4 +45,27 @@ fn result_functor_test_error() {
     let data = source.fmap(|x|x/5);
     let check:Result<i32, String> = Err("Nothing".to_string());
     assert_eq!(data, check);
+}
+
+impl<T, B, F> Functor<T, B, F> for Option<T>
+where F: FnOnce(T)->B {
+    type Output=Option<B>;
+    fn fmap(self, f:F) -> Self::Output {
+        self.map(f)
+    }
+}
+
+#[test]
+fn option_functor_test_ok() {
+    let source:Option<i32> = Some(25);
+    let data = source.fmap(|x|x/5);
+    let check:Option<i32> = Some(5);
+    assert_eq!(data, check);
+}
+
+#[test]
+fn result_functor_test_none() {
+    let source:Option<i32> = None;
+    let data = source.fmap(|x|x/5);
+    assert_eq!(data, source);
 }
