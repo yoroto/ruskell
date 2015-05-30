@@ -1,3 +1,3 @@
 mod functor;
-// mod applicative;
+mod applicative;
 // mod monad;
