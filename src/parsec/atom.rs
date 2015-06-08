@@ -3,8 +3,7 @@ use std::result::Result;
 use std::fmt::Display;
 use std::sync::Arc;
 
-pub fn one<T:Eq+Display+'static, S>(x:Arc<T>)->(Box<FnMut(&mut S)->Result<Arc<T>, SimpleError>>)
-where S:State<T>{
+pub fn one<T:Eq+Display+'static>(x:Arc<T>)->(Box<FnMut(&mut State<T>)->Result<Arc<T>, SimpleError>>){
     let value = x.clone();
     Box::new(move |state: &mut S|->Result<Arc<T>, SimpleError> {
         let value = value.clone();
