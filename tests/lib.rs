@@ -1,8 +1,7 @@
 extern crate raskell;
-use raskell::parsec::VecState;
+use raskell::parsec::{VecState, State};
 
 use std::iter::FromIterator;
-//use std::option::Option;
 
 #[test]
 fn it_works() {

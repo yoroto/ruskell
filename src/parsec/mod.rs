@@ -16,11 +16,18 @@ impl<A> FromIterator<A> for VecState<A> {
     }
 }
 
-impl<T:Clone> VecState<T> {
-    pub fn current(&self) -> usize {
+pub trait State<T> {
+    fn current(&self)-> usize;
+    fn seek_to(&mut self, usize)->bool;
+    fn next(&mut self)->Option<T>;
+    fn next_by(&mut self, &Fn(&T)->bool)->Option<T>;
+}
+
+impl<T:Clone> State<T> for VecState<T> {
+    fn current(&self) -> usize {
         self.index
     }
-    pub fn seek_to(&mut self, to:usize) -> bool {
+    fn seek_to(&mut self, to:usize) -> bool {
         if 0 as usize <= to && to < self.buffer.len() {
             self.index = to;
             true
@@ -28,7 +35,7 @@ impl<T:Clone> VecState<T> {
             false
         }
     }
-    pub fn next(&mut self)->Option<T>{
+    fn next(&mut self)->Option<T>{
         if 0 as usize <= self.index && self.index < self.buffer.len() {
             let item = &self.buffer[self.index];
             self.index += 1;
@@ -37,7 +44,7 @@ impl<T:Clone> VecState<T> {
             None
         }
     }
-    pub fn next_by(&mut self, pred:&Fn(&T)->bool)->Option<T>{
+    fn next_by(&mut self, pred:&Fn(&T)->bool)->Option<T>{
         if 0 as usize
          <= self.index && self.index < self.buffer.len() {
             let item = &self.buffer[self.index];
