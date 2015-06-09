@@ -1,7 +1,10 @@
-mod atom;
+pub mod atom;
+
 use std::vec::Vec;
 use std::sync::Arc;
 use std::iter::{Iterator, FromIterator};
+use std::fmt::{Debug, Formatter};
+use std::fmt;
 
 pub struct VecState<T> {
     index : usize,
@@ -60,29 +63,36 @@ impl<T> State<T> for VecState<T> {
 }
 
 pub struct SimpleError {
-    _at: usize,
+    _pos: usize,
     _message: String,
 
 }
 impl SimpleError {
-    pub fn new(at:usize, message:String)->SimpleError{
+    pub fn new(pos:usize, message:String)->SimpleError{
         SimpleError{
-            _at: at,
+            _pos: pos,
             _message: message,
         }
     }
 }
 
 pub trait Error {
-    fn at(&self)->usize;
+    fn pos(&self)->usize;
     fn message(&self)->&str;
 }
 
 impl Error for SimpleError {
-    fn at(&self)->usize {
-        self._at
+    fn pos(&self)->usize {
+        self._pos
     }
     fn message(&self)->&str {
         self._message.as_str()
+    }
+}
+
+impl Debug for SimpleError {
+    fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
+        let message = format!("<index:{}, mesage:{}>", self.pos(), self.message());
+        message.fmt(formatter)
     }
 }
