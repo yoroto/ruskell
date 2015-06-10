@@ -1,4 +1,4 @@
-use parsec::{State, SimpleError};
+use parsec::{State, SimpleError, Error};
 use std::result::Result;
 use std::fmt::Display;
 use std::sync::Arc;
@@ -9,14 +9,13 @@ where S:State<T> {
     Box::new(move |state: &mut S|->Result<Arc<T>, SimpleError> {
         let value = value.clone();
         let val = state.next_by(&|val:Arc<T>|val==value.clone());
-        val.map_or_else(
-                ||{
+        val.map_err(
+                |err:SimpleError|{
                     let value = value.clone();
                     let pos = state.pos();
-                    let message = format!("expect {} at {} but missmatch", value, pos);
-                    Err(SimpleError::new(pos, message))
-                },
-                |x:Arc<T>|->Result<Arc<T>, SimpleError>{Ok(x)},
+                    let message = format!("expect {} at {} but missmatch: {}", value, pos, err.message());
+                    SimpleError::new(pos, message)
+                }
             )
     })
 }

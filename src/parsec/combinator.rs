@@ -25,6 +25,13 @@ fn fail<T, S>(msg: String)->Box<FnMut(S) -> Result<(), SimpleError>>> where S:St
     })
 }
 
+struct Either<T, S>{
+    x: Box<FnMut(S) -> Result<(), SimpleError>>>;
+    y: Box<FnMut(S) -> Result<(), SimpleError>>>;
+}
+
+impl
+
 // fn many<T, S>(parsec: Box<FnMut(&mut S)->Result<Arc<T>, SimpleError>>)
 //     -> Box<FnMut(&mut S)->Result<Vec<Arc<T>>, SimpleError>> {
 //

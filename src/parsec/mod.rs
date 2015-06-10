@@ -24,7 +24,7 @@ pub trait State<T> {
     fn pos(&self)-> usize;
     fn seek_to(&mut self, usize)->bool;
     fn next(&mut self)->Option<Arc<T>>;
-    fn next_by(&mut self, &Fn(Arc<T>)->bool)->Option<Arc<T>>;
+    fn next_by(&mut self, &Fn(Arc<T>)->bool)->Result<Arc<T>, SimpleError>;
 }
 
 impl<T> State<T> for VecState<T> {
@@ -48,16 +48,17 @@ impl<T> State<T> for VecState<T> {
             None
         }
     }
-    fn next_by(&mut self, pred:&Fn(Arc<T>)->bool)->Option<Arc<T>>{
-        if 0 as usize
-         <= self.index && self.index < self.buffer.len() {
+    fn next_by(&mut self, pred:&Fn(Arc<T>)->bool)->Result<Arc<T>, SimpleError>{
+        if 0 as usize <= self.index && self.index < self.buffer.len() {
             let item = self.buffer[self.index].clone();
             if pred(item.clone()) {
                 self.index += 1;
+                Ok(item.clone())
+            } else {
+                Err(SimpleError::new(self.index, String::from_str("predicate failed")))
             }
-            Some(item.clone())
         } else {
-            None
+            Err(SimpleError::new(self.index, String::from_str("eof")))
         }
     }
 }
