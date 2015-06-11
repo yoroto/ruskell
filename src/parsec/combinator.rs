@@ -1,15 +1,16 @@
 use parsec::{State, SimpleError};
+use std::sync::Arc;
 
-fn pack<T, D, S>(data:Arc<D>) -> Box<FnMut(S) -> Result<Arc<D>, SimpleError>>> where S:State<T> {
-    Box::new(move |state:S|-> Result<Arc<D>, SimpleError>> {
+pub fn pack<T, D:'static, S>(data:Arc<D>) -> Box<FnMut(&mut S) -> Result<Arc<D>, SimpleError>> where S:State<T> {
+    Box::new(move |_:&mut S|-> Result<Arc<D>, SimpleError> {
         let data=data.clone();
-        Some(data)
+        Ok(data)
     })
 }
 
-fn try<T, P, S>(parsec:FnMut(S) -> Result<Arc<P>, SimpleError>>)
--> Box<FnMut(S) -> Result<Arc<P>, SimpleError>>> where S:State<T> {
-    Box::new(move |state:S|-> Result<Arc<P>, SimpleError>> {
+pub fn try<T, R, S>(mut parsec:Box<FnMut(&mut S) -> Result<Arc<R>, SimpleError>>)
+-> Box<FnMut(&mut S) -> Result<Arc<R>, SimpleError>> where S:State<T> {
+    Box::new(move |state:&mut S|-> Result<Arc<R>, SimpleError> {
         let pos = state.pos();
         let val = parsec(state);
         if val.is_err() {
@@ -18,19 +19,19 @@ fn try<T, P, S>(parsec:FnMut(S) -> Result<Arc<P>, SimpleError>>)
         val
     })
 }
+//
+// fn fail<T, S>(msg: String)->Box<FnMut(S) -> Result<(), SimpleError>>> where S:State<T> {
+//     Box::new(move |state:S|-> Result<(), SimpleError>> {
+//         Err(SimpleError::new(state.pos(), msg))
+//     })
+// }
+//
+// struct Either<T, S>{
+//     x: Box<FnMut(S) -> Result<(), SimpleError>>>;
+//     y: Box<FnMut(S) -> Result<(), SimpleError>>>;
+// }
 
-fn fail<T, S>(msg: String)->Box<FnMut(S) -> Result<(), SimpleError>>> where S:State<T> {
-    Box::new(move |state:S|-> Result<(), SimpleError>> {
-        Err(SimpleError::new(state.pos(), msg))
-    })
-}
 
-struct Either<T, S>{
-    x: Box<FnMut(S) -> Result<(), SimpleError>>>;
-    y: Box<FnMut(S) -> Result<(), SimpleError>>>;
-}
-
-impl
 
 // fn many<T, S>(parsec: Box<FnMut(&mut S)->Result<Arc<T>, SimpleError>>)
 //     -> Box<FnMut(&mut S)->Result<Vec<Arc<T>>, SimpleError>> {

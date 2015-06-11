@@ -1,4 +1,5 @@
 pub mod atom;
+pub mod combinator;
 
 use std::vec::Vec;
 use std::sync::Arc;
@@ -53,7 +54,7 @@ impl<T> State<T> for VecState<T> {
             let item = self.buffer[self.index].clone();
             if pred(item.clone()) {
                 self.index += 1;
-                Ok(item.clone())
+                Ok(item)
             } else {
                 Err(SimpleError::new(self.index, String::from_str("predicate failed")))
             }
