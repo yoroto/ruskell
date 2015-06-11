@@ -1,16 +1,19 @@
 use parsec::{State, SimpleError};
 use std::sync::Arc;
+use std::result;
 
-pub fn pack<T, D:'static, S>(data:Arc<D>) -> Box<FnMut(&mut S) -> Result<Arc<D>, SimpleError>> where S:State<T> {
-    Box::new(move |_:&mut S|-> Result<Arc<D>, SimpleError> {
+pub type Result<T> = result::Result<Arc<T>, SimpleError>;
+
+pub fn pack<T, D:'static, S>(data:Arc<D>) -> Box<FnMut(&mut S) -> Result<D>> where S:State<T> {
+    Box::new(move |_:&mut S|-> Result<D> {
         let data=data.clone();
         Ok(data)
     })
 }
 
-pub fn try<T, R, S>(mut parsec:Box<FnMut(&mut S) -> Result<Arc<R>, SimpleError>>)
--> Box<FnMut(&mut S) -> Result<Arc<R>, SimpleError>> where S:State<T> {
-    Box::new(move |state:&mut S|-> Result<Arc<R>, SimpleError> {
+pub fn try<T, R, S>(mut parsec:Box<FnMut(&mut S) -> Result<R>>)
+-> Box<FnMut(&mut S) -> Result<R>> where S:State<T> {
+    Box::new(move |state:&mut S|-> Result<R> {
         let pos = state.pos();
         let val = parsec(state);
         if val.is_err() {
@@ -20,8 +23,8 @@ pub fn try<T, R, S>(mut parsec:Box<FnMut(&mut S) -> Result<Arc<R>, SimpleError>>
     })
 }
 
-pub fn fail<T, S>(msg: String)->Box<FnMut(&mut S) -> Result<(), SimpleError>> where S:State<T> {
-    Box::new(move |state:&mut S|-> Result<(), SimpleError> {
+pub fn fail<T, S>(msg: String)->Box<FnMut(&mut S) -> Result<()>> where S:State<T> {
+    Box::new(move |state:&mut S|-> Result<()> {
         Err(SimpleError::new(state.pos(), msg.clone()))
     })
 }

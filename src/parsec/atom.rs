@@ -1,12 +1,14 @@
 use parsec::{State, SimpleError, Error};
-use std::result::Result;
 use std::fmt::Display;
 use std::sync::Arc;
+use std::result;
 
-pub fn one<T:Eq+Display+'static, S>(x:Arc<T>)->(Box<FnMut(&mut S)->Result<Arc<T>, SimpleError>>)
+pub type Result<T> = result::Result<Arc<T>, SimpleError>;
+
+pub fn one<T:Eq+Display+'static, S>(x:Arc<T>)->(Box<FnMut(&mut S)->Result<T>>)
 where S:State<T> {
     let value = x.clone();
-    Box::new(move |state: &mut S|->Result<Arc<T>, SimpleError> {
+    Box::new(move |state: &mut S|->Result<T> {
         let value = value.clone();
         let val = state.next_by(&|val:Arc<T>|val==value.clone());
         val.map_err(
@@ -20,10 +22,10 @@ where S:State<T> {
     })
 }
 
-pub fn eof<T:Display+'static, S>(state: &mut S)->Result<(), SimpleError> where S:State<T>{
+pub fn eof<T:Display+'static, S>(state: &mut S)->Result<()> where S:State<T>{
     let val = state.next();
     if val.is_none() {
-        Ok(())
+        Ok(Arc::new(()))
     } else {
         let pos = state.pos();
         let message = format!("expect eof at {} but got {}", pos, val.unwrap());

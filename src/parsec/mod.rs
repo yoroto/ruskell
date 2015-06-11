@@ -6,6 +6,8 @@ use std::sync::Arc;
 use std::iter::{Iterator, FromIterator};
 use std::fmt::{Debug, Formatter};
 use std::fmt;
+use std::result;
+
 
 pub struct VecState<T> {
     index : usize,
@@ -25,7 +27,7 @@ pub trait State<T> {
     fn pos(&self)-> usize;
     fn seek_to(&mut self, usize)->bool;
     fn next(&mut self)->Option<Arc<T>>;
-    fn next_by(&mut self, &Fn(Arc<T>)->bool)->Result<Arc<T>, SimpleError>;
+    fn next_by(&mut self, &Fn(Arc<T>)->bool)->Result<T>;
 }
 
 impl<T> State<T> for VecState<T> {
@@ -49,7 +51,7 @@ impl<T> State<T> for VecState<T> {
             None
         }
     }
-    fn next_by(&mut self, pred:&Fn(Arc<T>)->bool)->Result<Arc<T>, SimpleError>{
+    fn next_by(&mut self, pred:&Fn(Arc<T>)->bool)->Result<T>{
         if 0 as usize <= self.index && self.index < self.buffer.len() {
             let item = self.buffer[self.index].clone();
             if pred(item.clone()) {
@@ -93,8 +95,10 @@ impl Error for SimpleError {
 }
 
 impl Debug for SimpleError {
-    fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
+    fn fmt(&self, formatter:&mut Formatter)->result::Result<(), fmt::Error> {
         let message = format!("<index:{}, mesage:{}>", self.pos(), self.message());
         message.fmt(formatter)
     }
 }
+
+pub type Result<T> = result::Result<Arc<T>, SimpleError>;
