@@ -19,12 +19,12 @@ pub fn try<T, R, S>(mut parsec:Box<FnMut(&mut S) -> Result<Arc<R>, SimpleError>>
         val
     })
 }
-//
-// fn fail<T, S>(msg: String)->Box<FnMut(S) -> Result<(), SimpleError>>> where S:State<T> {
-//     Box::new(move |state:S|-> Result<(), SimpleError>> {
-//         Err(SimpleError::new(state.pos(), msg))
-//     })
-// }
+
+pub fn fail<T, S>(msg: String)->Box<FnMut(&mut S) -> Result<(), SimpleError>> where S:State<T> {
+    Box::new(move |state:&mut S|-> Result<(), SimpleError> {
+        Err(SimpleError::new(state.pos(), msg.clone()))
+    })
+}
 //
 // struct Either<T, S>{
 //     x: Box<FnMut(S) -> Result<(), SimpleError>>>;
