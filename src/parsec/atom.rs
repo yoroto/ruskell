@@ -4,9 +4,9 @@ use std::sync::Arc;
 use std::result;
 
 pub type Result<T> = result::Result<Arc<T>, SimpleError>;
+pub type Parsec<T, S> = Box<FnMut(&mut S)->Result<T>>;
 
-pub fn one<T:Eq+Display+'static, S>(x:Arc<T>)->(Box<FnMut(&mut S)->Result<T>>)
-where S:State<T> {
+pub fn one<T:Eq+Display+'static, S>(x:Arc<T>)->Parsec<T, S> where S:State<T> {
     let value = x.clone();
     Box::new(move |state: &mut S|->Result<T> {
         let value = value.clone();
