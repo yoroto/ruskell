@@ -1,19 +1,18 @@
-use parsec::{State, SimpleError};
+use parsec::{VecState, State, SimpleError};
 use std::sync::Arc;
-use std::result;
 
-pub type Result<T> = result::Result<Arc<T>, SimpleError>;
-pub type Parsec<T, S> = Box<FnMut(&mut S)->Result<T>>;
+pub type Status<T> = Result<Arc<T>, SimpleError>;
+pub type Parsec<T, R> = Box<FnMut(&mut VecState<T>)->Status<R>>;
 
-pub fn pack<T, D:'static, S>(data:Arc<D>) -> Parsec<D, S> where S:State<T> {
-    Box::new(move |_:&mut S|-> Result<D> {
+pub fn pack<T, R:'static>(data:Arc<R>) -> Parsec<T, R> {
+    Box::new(move |_:&mut VecState<T>|-> Status<R> {
         let data=data.clone();
         Ok(data)
     })
 }
 
-pub fn try<T, R, S>(mut parsec:Parsec<R, S>) -> Parsec<R, S> where S:State<T> {
-    Box::new(move |state:&mut S|-> Result<R> {
+pub fn try<T, R>(mut parsec:Parsec<T, R>) -> Parsec<T, R> {
+    Box::new(move |state:&mut VecState<T>|-> Status<R> {
         let pos = state.pos();
         let val = parsec(state);
         if val.is_err() {
@@ -23,35 +22,37 @@ pub fn try<T, R, S>(mut parsec:Parsec<R, S>) -> Parsec<R, S> where S:State<T> {
     })
 }
 
-pub fn fail<T, S>(msg: String)->Parsec<(), S> where S:State<T> {
-    Box::new(move |state:&mut S|-> Result<()> {
+pub fn fail<T>(msg: String)->Parsec<T, ()> {
+    Box::new(move |state:&mut VecState<T>|-> Status<()> {
         Err(SimpleError::new(state.pos(), msg.clone()))
     })
 }
 
-pub struct Either<R, S>{
-    x: Parsec<R, S>,
-    y: Parsec<R, S>,
+pub struct Either<T, R>{
+    x: Parsec<T, R>,
+    y: Parsec<T, R>,
 }
 
-fn either<T, R, S>(x: Parsec<R, S>, y:Parsec<R, S>)->Either<R, S> where S:State<T>{
+pub fn either<T, R>(x: Parsec<T, R>, y: Parsec<T, R>)->Either<T, R> {
     Either{
         x: x,
         y: y,
     }
 }
 
-impl<R, S> FnOnce<(S, )> for Either<R, S> {
-    type Output = Parsec<R, S>;
-    extern "rust-call" fn call_once(self, args: (&mut S, )) -> Parsec<R, S> {
+impl<'a, T, R> FnOnce<(&'a mut VecState<T>, )> for Either<T, R> {
+    type Output = Status<R>;
+    extern "rust-call" fn call_once(self, args: (&'a mut VecState<T>, )) -> Status<R> {
         let (state, ) = args;
         let pos = state.pos();
-        let val = self.x(state);
+        let mut fx = self.x;
+        let val = (fx)(state);
         if val.is_ok() {
             val
         } else {
             if pos == state.pos() {
-                self.y(state)
+                let mut fy = self.y;
+                (fy)(state)
             } else {
                 val
             }
@@ -59,11 +60,33 @@ impl<R, S> FnOnce<(S, )> for Either<R, S> {
     }
 }
 
-impl<R, S> FnMut<(S, )> for Either<R, S> {
-    extern "rust-call" fn call_mut(&mut self, args: (&mut S, )) -> Parsec<R, S> {
-        self.call_once(args)
+impl<'a, T, R> FnMut<(&'a mut VecState<T>, )> for Either<T, R> {
+    extern "rust-call" fn call_mut(&mut self, args: (&'a mut VecState<T>, )) -> Status<R> {
+        //self.call_once(args)
+        let (state, ) = args;
+        let pos = state.pos();
+        let val = (self.x)(state);
+        if val.is_ok() {
+            val
+        } else {
+            if pos == state.pos() {
+                (self.y)(state)
+            } else {
+                val
+            }
+        }
     }
 }
+
+// impl<T:'static, R:'static> Either<T, R> {
+//     fn or(&mut self, p:Parsec<T, R>) -> &mut Self {
+//         let fy = self.y;
+//         let p:Parsec<T, R> = Box::new(either(fy, p));
+//         self.y = p;
+//         self
+//     }
+// }
+
 
 // fn many<T, S>(parsec: Box<FnMut(&mut S)->Result<Arc<T>, SimpleError>>)
 //     -> Box<FnMut(&mut S)->Result<Vec<Arc<T>>, SimpleError>> {

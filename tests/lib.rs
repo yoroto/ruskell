@@ -1,6 +1,6 @@
-extern crate raskell;
-use raskell::parsec::{VecState, State};
-use raskell::parsec::atom::{one, eof};
+extern crate ruskell;
+use ruskell::parsec::{VecState, State};
+use ruskell::parsec::atom::{one, eof};
 use std::sync::Arc;
 use std::iter::FromIterator;
 
@@ -20,7 +20,7 @@ fn state_works() {
 
 #[test]
 fn one_test_0() {
-    let mut state:VecState<char> = VecState::from_iter("abc".chars().into_iter());
+    let mut state = VecState::from_iter("abc".chars().into_iter());
     let a = &mut one(Arc::new('a'));
     let re = a(&mut state);
     assert!(re.is_ok());
@@ -40,7 +40,7 @@ fn one_test_0() {
 
 #[test]
 fn one_end_test_0() {
-    let mut state:VecState<char> = VecState::from_iter("abc".chars().into_iter());
+    let mut state = VecState::from_iter("abc".chars().into_iter());
     let a = &mut one(Arc::new('a'));
     let re = a(&mut state);
     assert!(re.is_ok());

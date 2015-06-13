@@ -1,3 +1,4 @@
+#![feature(core)]
 #![feature(convert)]
 #![feature(collections)]
 #![feature(unboxed_closures)]
