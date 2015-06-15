@@ -1,6 +1,7 @@
 extern crate ruskell;
 use ruskell::parsec::{VecState, State};
 use ruskell::parsec::atom::{one, eof};
+use ruskell::parsec::combinator::{either};
 use std::sync::Arc;
 use std::iter::FromIterator;
 
@@ -58,4 +59,28 @@ fn one_end_test_0() {
     assert_eq!(data, Arc::new('c'));
     let re = eof(&mut state);
     assert!(re.is_ok());
+}
+
+#[test]
+fn either_test_0() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one(Arc::new('a'));
+    let b = one(Arc::new('b'));
+    let e = &mut either(b, a);
+    let re = e(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, Arc::new('a'));
+}
+
+#[test]
+fn either_test_1() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one(Arc::new('a'));
+    let b = one(Arc::new('b'));
+    let e = &mut either(a, b);
+    let re = e(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, Arc::new('a'));
 }

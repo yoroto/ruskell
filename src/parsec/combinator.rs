@@ -78,14 +78,12 @@ impl<'a, T, R> FnMut<(&'a mut VecState<T>, )> for Either<T, R> {
     }
 }
 
-// impl<T:'static, R:'static> Either<T, R> {
-//     fn or(&mut self, p:Parsec<T, R>) -> &mut Self {
-//         let fy = self.y;
-//         let p:Parsec<T, R> = Box::new(either(fy, p));
-//         self.y = p;
-//         self
-//     }
-// }
+impl<T:'static, R:'static> Either<T, R> {
+    pub fn or(self, p:Parsec<T, R>) -> Self {
+        let re = either(Box::new(self), p);
+        re
+    }
+}
 
 
 // fn many<T, S>(parsec: Box<FnMut(&mut S)->Result<Arc<T>, SimpleError>>)
