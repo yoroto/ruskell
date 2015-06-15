@@ -84,21 +84,12 @@ impl<T:'static, R:'static> Either<T, R> {
         re
     }
 }
+
 // Type Continuation Pass
 pub struct Bind<T, C, P> {
     parsec: Parsec<T, C>,
     binder: Box<Fn(Arc<C>)->Parsec<T, P>>,
 }
-
-// type result passing
-// pub fn bind<T, R, P>(mut parsec:Parsec<T, R>, binder:Box<Fn(Arc<R>)->Parsec<T, P>>)->Parsec<T, P> {
-//     Box::new(move |state:&mut VecState<T>|-> Status<P>{
-//         parsec(state)
-//                 .map(|x:Arc<R>| binder(x.clone()))
-//                 .map(|mut p:Parsec<T, P>| p(state))
-//                 .unwrap_or_else(|err:SimpleError| Err(err))
-//     })
-// }
 
 pub fn bind<T, C, P>(parsec:Parsec<T, C>, binder:Box<Fn(Arc<C>)->Parsec<T, P>>)->Bind<T, C, P> {
     Bind{
@@ -130,6 +121,43 @@ impl<T:'static, C:'static, P:'static> Bind<T, C, P>{
         Bind{
             parsec:Box::new(self),
             binder:binder,
+        }
+    }
+}
+
+// Type Continuation Pass
+pub struct Pass<T, C, P> {
+    prefix: Parsec<T, C>,
+    postfix: Parsec<T, P>,
+}
+
+pub fn pass<T, C, P>(prefix:Parsec<T, C>, postfix:Parsec<T, P>)->Pass<T, C, P> {
+    Pass{
+        prefix:prefix,
+        postfix:postfix,
+    }
+}
+
+impl<'a, T, C, P> FnOnce<(&'a mut VecState<T>, )> for Pass<T, C, P> {
+    type Output = Status<P>;
+    extern "rust-call" fn call_once(self, args: (&'a mut VecState<T>, )) -> Status<P> {
+        let (state, ) = args;
+        let mut s = self;
+        (s.prfix)(state).map(|_:Arc<C>| (s.postfix)(state))
+    }
+}
+
+impl<'a, T, C, P> FnMut<(&'a mut VecState<T>, )> for Pass<T, C, P> {
+    extern "rust-call" fn call_mut(&mut self, args: (&'a mut VecState<T>, )) -> Status<P> {
+        self.call_once(args)
+    }
+}
+
+impl<T:'static, C:'static, P:'static> Pass<T, C, P>{
+    pub fn pass<Q>(self, postfix:Parsec<T, Q>>) -> Pass<T, P, Q> {
+        Pass{
+            prefix:Box::new(self),
+            postfix:postfix,
         }
     }
 }
