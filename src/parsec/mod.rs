@@ -99,4 +99,5 @@ impl Debug for SimpleError {
     }
 }
 
+pub type Parsec<T, R> = Box<FnMut(&mut VecState<T>)->Status<R>>;
 pub type Status<T> = Result<Arc<T>, SimpleError>;
