@@ -1,8 +1,5 @@
-use parsec::{VecState, State, SimpleError};
+use parsec::{VecState, State, SimpleError, Parsec, Status};
 use std::sync::Arc;
-
-pub type Status<T> = Result<Arc<T>, SimpleError>;
-pub type Parsec<T, R> = Box<FnMut(&mut VecState<T>)->Status<R>>;
 
 pub fn pack<T, R:'static>(data:Arc<R>) -> Parsec<T, R> {
     Box::new(move |_:&mut VecState<T>|-> Status<R> {
