@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 pub fn one<T:Eq+Display+'static>(x:Arc<T>)->Parsec<T, T>{
     let value = x.clone();
-    Box::new(move |state: &mut VecState<T>|->Status<T> {
+    parsec!(move |state: &mut VecState<T>|->Status<T> {
         let value = value.clone();
         let val = state.next_by(&|val:Arc<T>|val==value.clone());
         val.map_err(
@@ -19,7 +19,7 @@ pub fn one<T:Eq+Display+'static>(x:Arc<T>)->Parsec<T, T>{
 }
 
 pub fn eof<T>()->Parsec<T, ()> {
-    Box::new(move |state: &mut VecState<T>|->Status<()> {
+    parsec!(move |state: &mut VecState<T>|->Status<()> {
         let mut state = state;
         let val = state.next();
         if val.is_none() {

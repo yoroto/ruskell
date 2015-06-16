@@ -1,6 +1,3 @@
-pub mod atom;
-pub mod combinator;
-
 use std::vec::Vec;
 use std::sync::Arc;
 use std::iter::{Iterator, FromIterator};
@@ -99,5 +96,20 @@ impl Debug for SimpleError {
     }
 }
 
-pub type Parsec<T, R> = Box<FnMut(&mut VecState<T>)->Status<R>>;
-pub type Status<T> = Result<Arc<T>, SimpleError>;
+pub type Parser<T:'static, R:'static> = Fn(&mut VecState<T>)->Status<R>;
+pub type Parsec<T:'static, R:'static> = Arc<Box<Parser<T, R>>>;
+pub type Binder<T, C, P> = Arc<Box<Fn(Arc<C>)->Parsec<T, P>>>;
+pub type Psc<T:'static> = Arc<Box<T>>;
+pub type Status<T:'static> = Result<Arc<T>, SimpleError>;
+
+#[macro_export]
+macro_rules! parsec {
+    ($x:expr) => (Arc::new(Box::new($x)));
+}
+
+pub mod atom;
+pub mod combinator;
+
+// pub fn parsec<T, R>(p:&Parser<T, R>)->Parsec<T, R> {
+//     Arc::new(Box::new(*p))
+// }
