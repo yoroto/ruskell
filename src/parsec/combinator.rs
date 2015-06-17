@@ -1,7 +1,7 @@
 use parsec::{VecState, State, SimpleError, Parsec, Parser, Psc, Status, Binder};
 use std::sync::Arc;
 use std::ops::Deref;
-use std::marker::Sized;
+use std::marker::{Sized, PhantomData};
 //use std::fmt::{Debug, Display};
 
 pub fn pack<T:'static, R:'static>(data:Arc<R>) -> Parsec<T, R> {
@@ -107,17 +107,23 @@ impl<T:'static, R:'static> Either<T, R> {
 }
 
 // Type Continuation Then
-pub struct Bind<T:'static, C:'static, P:'static> {
-    parsec: Parsec<T, C>,
-    binder: Binder<T, C, P>,
+pub struct Bind<T:'static, C:'static, P:'static, PTC:'static+?Sized, BCP:'static+?Sized> {
+    parsec: Arc<Box<PTC>>,
+    binder: Arc<Box<BCP>>,
+    element_type: PhantomData<T>,
+    continuation_type: PhantomData<C>,
+    pass_type: PhantomData<P>,
 }
 
-pub fn bind<T:'static, C:'static, P:'static>(parsec:Parsec<T, C>, binder:Binder<T, C, P>)
-        -> Psc<Bind<T, C, P>> {
+pub fn bind<T:'static, C:'static, P:'static, PTC:?Sized+'static, BCP:?Sized+'static>
+        (parsec:Arc<Box<PTC>>, binder:Arc<Box<BCP>>) -> Psc<Bind<T, C, P, PTC, BCP>>
+        where PTC:Fn(&mut VecState<T>)->Status<C>, BCP:Fn(Arc<C>)->Parsec<T, P> {
     parsec!(Bind::new(parsec, binder))
 }
 
-impl<'a, T:'static, C:'static, P:'static> FnOnce<(&'a mut VecState<T>, )> for Bind<T, C, P> {
+impl<'a, T:'static, C:'static, P:'static, PTC:?Sized+'static, BCP:?Sized+'static>
+            FnOnce<(&'a mut VecState<T>, )> for Bind<T, C, P, PTC, BCP>
+            where PTC:Fn(&mut VecState<T>)->Status<C>, BCP:Fn(Arc<C>)->Parsec<T, P> {
     type Output = Status<P>;
     extern "rust-call" fn call_once(self, args: (&'a mut VecState<T>, )) -> Status<P> {
         let (state, ) = args;
@@ -128,7 +134,9 @@ impl<'a, T:'static, C:'static, P:'static> FnOnce<(&'a mut VecState<T>, )> for Bi
     }
 }
 
-impl<'a, T:'static, C:'static, P:'static> FnMut<(&'a mut VecState<T>, )> for Bind<T, C, P> {
+impl<'a, T:'static, C:'static, P:'static, PTC:?Sized+'static, BCP:?Sized+'static>
+            FnMut<(&'a mut VecState<T>, )> for Bind<T, C, P, PTC, BCP>
+            where PTC:Fn(&mut VecState<T>)->Status<C>, BCP:Fn(Arc<C>)->Parsec<T, P> {
     extern "rust-call" fn call_mut(&mut self, args: (&'a mut VecState<T>, )) -> Status<P> {
         let (state, ) = args;
         (self.parsec)(state)
@@ -138,7 +146,9 @@ impl<'a, T:'static, C:'static, P:'static> FnMut<(&'a mut VecState<T>, )> for Bin
     }
 }
 
-impl<'a, T:'static, C:'static, P:'static> Fn<(&'a mut VecState<T>, )> for Bind<T, C, P> {
+impl<'a, T:'static, C:'static, P:'static, PTC:?Sized+'static, BCP:?Sized+'static>
+            Fn<(&'a mut VecState<T>, )> for Bind<T, C, P, PTC, BCP>
+            where PTC:Fn(&mut VecState<T>)->Status<C>, BCP:Fn(Arc<C>)->Parsec<T, P>{
     extern "rust-call" fn call(&self, args: (&'a mut VecState<T>, )) -> Status<P> {
         let (state, ) = args;
         (self.parsec)(state)
@@ -148,49 +158,57 @@ impl<'a, T:'static, C:'static, P:'static> Fn<(&'a mut VecState<T>, )> for Bind<T
     }
 }
 
-impl<T:'static, C:'static, P:'static> Bind<T, C, P>{
-    pub fn new(parsec:Parsec<T, C>, binder:Binder<T, C, P>)->Bind<T, C, P> {
+impl<T:'static, C:'static, P:'static, PTC:?Sized, BCP:?Sized> Bind<T, C, P, PTC, BCP>
+        where PTC:Fn(&mut VecState<T>)->Status<C>+'static,
+            BCP:Fn(Arc<C>)->Parsec<T, P>+'static{
+    pub fn new(parsec:Arc<Box<PTC>>, binder:Arc<Box<BCP>>)->Bind<T, C, P, PTC, BCP> {
         Bind{
             parsec:parsec.clone(),
             binder:binder.clone(),
+            element_type: PhantomData,
+            continuation_type: PhantomData,
+            pass_type: PhantomData,
         }
     }
 
-    pub fn over<Q>(&self, postfix:Parsec<T, Q>) -> Psc<Over<T, P, Q>> {
-        let s = parsec!(Bind::new(self.parsec.clone(), self.binder.clone()));
-        parsec!(Over{
-            prefix:parsec!(move |state: &mut VecState<T>| s(state)),
-            postfix:postfix.clone(),
-        })
+    pub fn over<Q, PTP:?Sized+'static, PTQ:?Sized+'static,>
+            (&self, postfix:Arc<Box<PTQ>>) -> Psc<Over<T, P, Q, PTP, PTQ>>
+            where PTP:Fn(&mut VecState<T>)->Status<P>, PTQ:Fn(&mut VecState<T>)->Status<Q> {
+        let left = bind(self.parsec.clone(), self.binder.clone());
+        over(left.clone(), postfix.clone())
     }
-    pub fn bind<Q>(&self, binder:Binder<T, P, Q>) -> Psc<Bind<T, P, Q>> {
+    pub fn bind<Q, PTP:Fn(&mut VecState<T>)->Status<P>+?Sized+'static,
+                BPQ:Fn(Arc<P>)->Parsec<T, Q>+?Sized+'static>(&self, binder:Arc<Box<BPQ>>)
+            -> Psc<Bind<T, P, Q, PTP, BPQ>> {
         let s = parsec!(Bind::new(self.parsec.clone(), self.binder.clone()));
-        parsec!(Bind{
-            parsec:parsec!(move |state: &mut VecState<T>| s(state)),
-            binder:binder.clone(),
-        })
+        bind(s.clone(), binder.clone())
     }
-    pub fn then<Q>(&self, postfix:Parsec<T, Q>) -> Psc<Then<T, P, Q>> {
+    pub fn then<Q, PTP:Fn(&mut VecState<T>)->Status<P>+?Sized+'static,
+                PTQ:Fn(&mut VecState<T>)->Status<Q>+?Sized+'static>(&self, postfix:Arc<Box<PTQ>>)
+            -> Psc<Then<T, P, Q, PTP, PTQ>> {
         let s = parsec!(Bind::new(self.parsec.clone(), self.binder.clone()));
-        parsec!(Then{
-            prefix:parsec!(move |state: &mut VecState<T>| s(state)),
-            postfix:postfix.clone(),
-        })
+        parsec!(Then::new(parsec!(move |state: &mut VecState<T>| s(state)), postfix.clone()))
     }
 }
 
 // Type Continuation Then
-pub struct Then<T:'static, C:'static, P:'static> {
-    prefix: Parsec<T, C>,
-    postfix: Parsec<T, P>,
+pub struct Then<T:'static, C:'static, P:'static, PTC:'static+?Sized, PTP:'static+?Sized> {
+    prefix: Arc<Box<PTC>>,
+    postfix: Arc<Box<PTP>>,
+    element_type: PhantomData<T>,
+    continuation_type: PhantomData<C>,
+    pass_type: PhantomData<P>,
 }
 
-pub fn then<T:'static, C:'static, P:'static>(prefix:Parsec<T, C>,
-        postfix:Parsec<T, P>)->Psc<Then<T, C, P>> {
+pub fn then<T:'static, C:'static, P:'static, PTC:Fn(&mut VecState<T>)->Status<C>+?Sized+'static,
+            PTP:Fn(&mut VecState<T>)->Status<P>+?Sized+'static>(prefix:Parsec<T, C>,
+        postfix:Parsec<T, P>)->Psc<Then<T, C, P, PTC, PTP>> {
     parsec!(Then::new(prefix, postfix))
 }
 
-impl<'a, T:'static, C:'static, P:'static> FnOnce<(&'a mut VecState<T>, )> for Then<T, C, P> {
+impl<'a, T:'static, C:'static, P:'static, PTC:Fn(&mut VecState<T>)->Status<C>+?Sized+'static,
+            PTP:Fn(&mut VecState<T>)->Status<P>+?Sized+'static> FnOnce<(&'a mut VecState<T>, )>
+        for Then<T, C, P, PTC, PTP> {
     type Output = Status<P>;
     extern "rust-call" fn call_once(self, args: (&'a mut VecState<T>, )) -> Status<P> {
         let (state, ) = args;
@@ -200,7 +218,9 @@ impl<'a, T:'static, C:'static, P:'static> FnOnce<(&'a mut VecState<T>, )> for Th
     }
 }
 
-impl<'a, T:'static, C:'static, P:'static> FnMut<(&'a mut VecState<T>, )> for Then<T, C, P> {
+impl<'a, T:'static, C:'static, P:'static, PTC:Fn(&mut VecState<T>)->Status<C>+?Sized+'static,
+            PTP:Fn(&mut VecState<T>)->Status<P>+?Sized+'static> FnMut<(&'a mut VecState<T>, )>
+        for Then<T, C, P, PTC, PTP> {
     extern "rust-call" fn call_mut(&mut self, args: (&'a mut VecState<T>, )) -> Status<P> {
         let (state, ) = args;
         (self.prefix)(state)
@@ -209,7 +229,9 @@ impl<'a, T:'static, C:'static, P:'static> FnMut<(&'a mut VecState<T>, )> for The
     }
 }
 
-impl<'a, T:'static, C:'static, P:'static> Fn<(&'a mut VecState<T>, )> for Then<T, C, P> {
+impl<'a, T:'static, C:'static, P:'static, PTC:?Sized+'static, PTP:?Sized+'static>
+        Fn<(&'a mut VecState<T>, )> for Then<T, C, P, PTC, PTP>
+        where PTC:Fn(&mut VecState<T>)->Status<C>, PTP:Fn(&mut VecState<T>)->Status<P>{
     extern "rust-call" fn call(&self, args: (&'a mut VecState<T>, )) -> Status<P> {
         let (state, ) = args;
         (self.prefix)(state)
@@ -218,40 +240,54 @@ impl<'a, T:'static, C:'static, P:'static> Fn<(&'a mut VecState<T>, )> for Then<T
     }
 }
 
-impl<T:'static, C:'static, P:'static> Then<T, C, P>{
-    pub fn new(prefix:Parsec<T, C>, postfix:Parsec<T, P>)->Then<T, C, P> {
+impl<T:'static, C:'static, P:'static, PTC:?Sized+'static, PTP:?Sized+'static> Then<T, C, P, PTC, PTP>
+    where PTC:Fn(&mut VecState<T>)->Status<C>, PTP:Fn(&mut VecState<T>)->Status<P> {
+
+    pub fn new(prefix:Arc<Box<PTC>>, postfix:Arc<Box<PTP>>)->Then<T, C, P, PTC, PTP> {
         Then{
             prefix:prefix.clone(),
             postfix:postfix.clone(),
+            element_type: PhantomData,
+            continuation_type: PhantomData,
+            pass_type: PhantomData,
         }
     }
 
-    pub fn over<Q>(&self, postfix:Parsec<T, Q>) -> Psc<Over<T, P, Q>> {
+    pub fn over<Q, PTQ:?Sized+'static>(&self, postfix:Arc<Box<PTQ>>) -> Psc<Over<T, P, Q, PTP, PTQ>>
+            where PTQ:Fn(&mut VecState<T>)->Status<Q>{
         let left = then(self.prefix.clone(), self.postfix.clone());
         over(parsec!(move |state:&mut VecState<T>|left(state)), postfix.clone())
     }
-    pub fn then<Q>(&self, postfix:Parsec<T, Q>) -> Psc<Then<T, P, Q>> {
+    pub fn then<Q, PTQ:Fn(&mut VecState<T>)->Status<Q>+?Sized+'static>(&self, postfix:Arc<Box<PTQ>>)
+            -> Psc<Then<T, P, Q, PTP, PTQ>> {
         let left = then(self.prefix.clone(), self.postfix.clone());
         then(parsec!(move |state:&mut VecState<T>|left(state)), postfix.clone())
     }
-    pub fn bind<Q>(&self, binder:Binder<T, P, Q>) -> Psc<Bind<T, P, Q>> {
+    pub fn bind<Q, BPQ:Fn(Arc<P>)->Parsec<T, Q>+?Sized+'static>(&self, binder:Binder<T, P, Q>)
+            -> Psc<Bind<T, P, Q, PTP, BPQ>> {
         let left = then(self.prefix.clone(), self.postfix.clone());
         bind(parsec!(move |state:&mut VecState<T>|left(state)), binder.clone())
     }
 }
 
 // Type Continuation Then
-pub struct Over<T:'static, C:'static, P:'static> {
-    prefix: Parsec<T, C>,
-    postfix: Parsec<T, P>,
+pub struct Over<T:'static, C:'static, P:'static, PTC:?Sized+'static, PTP:?Sized+'static> {
+    prefix: Arc<Box<PTC>>,
+    postfix: Arc<Box<PTP>>,
+    element_type: PhantomData<T>,
+    continuation_type: PhantomData<C>,
+    pass_type: PhantomData<P>,
 }
 
-pub fn over<T:'static, C:'static, P:'static>(prefix:Parsec<T, C>,
-            postfix:Parsec<T, P>)->Psc<Over<T, C, P>> {
+pub fn over<T:'static, C:'static, P:'static, PTC:?Sized+'static, PTP:?Sized+'static>
+            (prefix:Arc<Box<PTC>>, postfix:Arc<Box<PTP>>) ->Psc<Over<T, C, P, PTC, PTP>>
+            where PTC:Fn(&mut VecState<T>)->Status<C>, PTP:Fn(&mut VecState<T>)->Status<P>{
     parsec!(Over::new(prefix, postfix))
 }
 
-impl<'a, T:'static, C:'static, P:'static> FnOnce<(&'a mut VecState<T>, )> for Over<T, C, P> {
+impl<'a, T:'static, C:'static, P:'static, PTC:Fn(&mut VecState<T>)->Status<C>+?Sized+'static,
+            PTP:Fn(&mut VecState<T>)->Status<P>+?Sized+'static> FnOnce<(&'a mut VecState<T>, )>
+        for Over<T, C, P, PTC, PTP> {
     type Output = Status<C>;
     extern "rust-call" fn call_once(self, args: (&'a mut VecState<T>, )) -> Status<C> {
         let (state, ) = args;
@@ -262,7 +298,9 @@ impl<'a, T:'static, C:'static, P:'static> FnOnce<(&'a mut VecState<T>, )> for Ov
     }
 }
 
-impl<'a, T:'static, C:'static, P:'static> FnMut<(&'a mut VecState<T>, )> for Over<T, C, P> {
+impl<'a, T:'static, C:'static, P:'static, PTC:Fn(&mut VecState<T>)->Status<C>+?Sized+'static,
+            PTP:Fn(&mut VecState<T>)->Status<P>+?Sized+'static> FnMut<(&'a mut VecState<T>, )>
+        for Over<T, C, P, PTC, PTP> {
     extern "rust-call" fn call_mut(&mut self, args: (&'a mut VecState<T>, )) -> Status<C> {
         let (state, ) = args;
         (self.prefix)(state)
@@ -272,7 +310,9 @@ impl<'a, T:'static, C:'static, P:'static> FnMut<(&'a mut VecState<T>, )> for Ove
     }
 }
 
-impl<'a, T:'static, C:'static, P:'static> Fn<(&'a mut VecState<T>, )> for Over<T, C, P> {
+impl<'a, T:'static, C:'static, P:'static, PTC:Fn(&mut VecState<T>)->Status<C>+?Sized+'static,
+            PTP:Fn(&mut VecState<T>)->Status<P>+?Sized+'static> Fn<(&'a mut VecState<T>, )>
+        for Over<T, C, P, PTC, PTP> {
     extern "rust-call" fn call(&self, args: (&'a mut VecState<T>, )) -> Status<C> {
         let (state, ) = args;
         (self.prefix)(state)
@@ -282,25 +322,40 @@ impl<'a, T:'static, C:'static, P:'static> Fn<(&'a mut VecState<T>, )> for Over<T
     }
 }
 
-impl<T:'static, C:'static, P:'static> Over<T, C, P>{
-    pub fn new(prefix:Parsec<T, C>, postfix:Parsec<T, P>)->Over<T, C, P> {
+impl<T:'static, C:'static, P:'static, PTC:Fn(&mut VecState<T>)->Status<C>+?Sized+'static,
+            PTP:Fn(&mut VecState<T>)->Status<P>+?Sized+'static> Over<T, C, P, PTC, PTP>{
+    pub fn new(prefix:Arc<Box<PTC>>, postfix:Arc<Box<PTP>>)->Over<T, C, P, PTC, PTP> {
         Over{
             prefix:prefix,
             postfix:postfix,
+            element_type: PhantomData,
+            continuation_type: PhantomData,
+            pass_type: PhantomData,
         }
     }
-    pub fn over<Q>(&self, postfix:Parsec<T, Q>) -> Psc<Over<T, C, Q>> {
+    pub fn over<Q, PTQ:Fn(&mut VecState<T>)->Status<Q>+?Sized+'static>(&self, postfix:Arc<Box<PTQ>>)
+            -> Psc<Over<T, C, Q, PTC, PTQ>> {
         let left = over(self.prefix.clone(), self.postfix.clone());
-        over(parsec!(move |state:&mut VecState<T>|left(state)), postfix.clone())
+        over(left.clone(), postfix.clone())
     }
-    pub fn then<Q>(&self, postfix:Parsec<T, Q>) -> Psc<Then<T, C, Q>> {
+    pub fn then<Q, PTQ:Fn(&mut VecState<T>)->Status<Q>+?Sized+'static>(&self, postfix:Arc<Box<PTQ>>)
+            -> Psc<Then<T, C, Q, PTC, PTQ>> {
         let left = over(self.prefix.clone(), self.postfix.clone());
-        then(parsec!(move |state:&mut VecState<T>|left(state)), postfix.clone())
+        then(left.clone(), postfix.clone())
     }
-    pub fn bind<Q>(&self, binder:Binder<T, C, Q>) -> Psc<Bind<T, C, Q>> {
+    pub fn bind<Q, BCQ:Fn(Arc<C>)->Parsec<T, Q>+?Sized+'static>(&self, binder:Arc<Box<BCQ>>)
+            -> Psc<Bind<T, C, Q, PTC, BCQ>> {
         let left = over(self.prefix.clone(), self.postfix.clone());
-        bind(parsec!(move |state:&mut VecState<T>|left(state)), binder.clone())
+        bind(left.clone(), binder.clone())
     }
+}
+
+pub fn between<T:'static, Start:'static, End:'static, R:'static,
+                PS:?Sized+'static, PE:?Sized+'static, P:?Sized+'static>
+            (start: Arc<Box<PS>>, p:Arc<Box<P>>, end: Arc<Box<PE>>) -> Arc<Box<P>>
+            where PS:Fn(&mut VecState<T>)->Status<Start>, PE:Fn(&mut VecState<T>)->Status<End>,
+                P:Fn(&mut VecState<T>)->Status<R> {
+    then(start, p).over(end)
 }
 
 pub fn many<T:'static, R:'static, P:Fn(&mut VecState<T>)->Status<R>+?Sized+'static>(p: Arc<Box<P>>)
