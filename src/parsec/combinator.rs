@@ -1,6 +1,7 @@
 use parsec::{VecState, State, SimpleError, Parsec, Parser, Psc, Status, Binder};
 use std::sync::Arc;
 use std::ops::Deref;
+use std::marker::Sized;
 
 pub fn pack<T:'static, R:'static>(data:Arc<R>) -> Parsec<T, R> {
     parsec!(move |_:&mut VecState<T>|-> Status<R> {
@@ -9,7 +10,7 @@ pub fn pack<T:'static, R:'static>(data:Arc<R>) -> Parsec<T, R> {
     })
 }
 
-pub fn try<T:'static, R:'static>(parsec:Parsec<T, R>) -> Parsec<T, R> {
+pub fn try<T:'static, R:'static, P:Fn(&mut VecState<T>)->Status<R>+?Sized+'static>(parsec:Arc<Box<P>>) -> Parsec<T, R> {
     parsec!(move |state:&mut VecState<T>|-> Status<R> {
         let p = parsec.clone();
         let pos = state.pos();
@@ -302,12 +303,14 @@ impl<T:'static, C:'static, P:'static> Over<T, C, P>{
 }
 
 
-pub fn many<T:'static, R:'static>(p: Parsec<T, R>) -> Parsec<T, Vec<Arc<R>>> {
+pub fn many<T:'static, R:'static, P:Fn(&mut VecState<T>)->Status<R>+?Sized+'static>(p: Arc<Box<P>>)
+        -> Parsec<T, Vec<Arc<R>>> {
     let re = Box::new(Either::new(many1(try(p)), pack(Arc::new(Vec::new()))));
     Arc::new(re as Box<Parser<T, Vec<Arc<R>>>>)
 }
 
-pub fn many1<T:'static, R:'static>(p: Parsec<T, R>) -> Parsec<T, Vec<Arc<R>>> {
+pub fn many1<T:'static, R:'static, P:Fn(&mut VecState<T>)->Status<R>+?Sized+'static>(p: Arc<Box<P>>)
+        -> Parsec<T, Vec<Arc<R>>> {
     let p = p.clone();
     parsec!(move |state: &mut VecState<T>|->Status<Vec<Arc<R>>>{
         let p = p.clone();
@@ -315,8 +318,8 @@ pub fn many1<T:'static, R:'static>(p: Parsec<T, R>) -> Parsec<T, Vec<Arc<R>>> {
             let psc = many(p.clone());
             let follow = psc(state);
             let mut v = Vec::new();
-            v.push_all(follow.unwrap().deref());
             v.push(x.clone());
+            v.push_all(follow.unwrap().deref());
             Ok(Arc::new(v))
         }).unwrap_or_else(|err:SimpleError| Err(err))
     })

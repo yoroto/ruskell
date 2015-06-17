@@ -53,10 +53,10 @@ impl<T> State<T> for VecState<T> {
                 self.index += 1;
                 Ok(item)
             } else {
-                Err(SimpleError::new(self.index, String::from_str("predicate failed")))
+                Err(SimpleError::new(self.index, String::from("predicate failed")))
             }
         } else {
-            Err(SimpleError::new(self.index, String::from_str("eof")))
+            Err(SimpleError::new(self.index, String::from("eof")))
         }
     }
 }

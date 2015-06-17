@@ -3,7 +3,7 @@
 extern crate ruskell;
 use ruskell::parsec::{VecState, State, Status, Parsec};
 use ruskell::parsec::atom::{one, eof};
-use ruskell::parsec::combinator::{either, bind, then};
+use ruskell::parsec::combinator::{either, bind, then, many, many1};
 use std::sync::Arc;
 use std::iter::FromIterator;
 use std::ops::Deref;
@@ -160,4 +160,65 @@ fn bind_then_over_test_0() {
     assert!(re.is_ok());
     let data = re.unwrap();
     assert_eq!(data, Arc::new('b'));
+}
+
+#[test]
+fn many_test_0() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one(Arc::new('a'));
+    let re = many(a)(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    let ver = Arc::new((vec!['a']).into_iter().map(|x:char| Arc::new(x)).collect());
+    assert_eq!(data, ver);
+}
+
+#[test]
+fn many_test_1() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one(Arc::new('b'));
+    let re = many(a)(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    let ver = Arc::new((vec![]).into_iter().map(|x:char| Arc::new(x)).collect());
+    assert_eq!(data, ver);
+}
+
+#[test]
+fn many_test_2() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one(Arc::new('a'));
+    let b = one(Arc::new('b'));
+    let c = one(Arc::new('c'));
+
+    let re = many(either(a, b).or(c))(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    let ver = Arc::new((vec!['a', 'b', 'c']).into_iter().map(|x:char| Arc::new(x)).collect());
+    assert_eq!(data, ver);
+}
+
+#[test]
+fn many1_test_0() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one(Arc::new('a'));
+    let b = one(Arc::new('b'));
+    let c = one(Arc::new('c'));
+
+    let re = many1(either(a, b).or(c))(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    let ver = Arc::new((vec!['a', 'b', 'c']).into_iter().map(|x:char| Arc::new(x)).collect());
+    assert_eq!(data, ver);
+}
+
+#[test]
+fn many1_test_1() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one(Arc::new('b'));
+    let b = one(Arc::new('b'));
+    let c = one(Arc::new('c'));
+
+    let re = many1(either(a, b).or(c))(&mut state);
+    assert!(re.is_err());
 }
