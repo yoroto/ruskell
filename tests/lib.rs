@@ -222,3 +222,16 @@ fn many1_test_1() {
     let re = many1(either(a, b).or(c))(&mut state);
     assert!(re.is_err());
 }
+
+#[test]
+fn many1_test_2() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one(Arc::new('a'));
+    let b = one(Arc::new('b'));
+
+    let re = many1(either(a, b))(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    let ver = Arc::new((vec!['a', 'b']).into_iter().map(|x:char| Arc::new(x)).collect());
+    assert_eq!(data, ver);
+}
