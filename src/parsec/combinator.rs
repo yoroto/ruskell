@@ -40,19 +40,8 @@ pub fn either<T:'static, R:'static>(x: Parsec<T, R>, y: Parsec<T, R>)-> Psc<Eith
 
 impl<'a, T:'static, R:'static> FnOnce<(&'a mut VecState<T>, )> for Either<T, R> {
     type Output = Status<R>;
-    extern "rust-call" fn call_once(self, args: (&'a mut VecState<T>, )) -> Status<R> {
-        let (state, ) = args;
-        let pos = state.pos();
-        let val = (self.x)(state);
-        if val.is_ok() {
-            val
-        } else {
-            if pos == state.pos() {
-                (self.y)(state)
-            } else {
-                val
-            }
-        }
+    extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<R> {
+        panic!("Not implement!");
     }
 }
 
@@ -119,12 +108,8 @@ pub fn bind<T:'static, C:'static, P:'static>(parsec:Parsec<T, C>, binder:Binder<
 
 impl<'a, T:'static, C:'static, P:'static> FnOnce<(&'a mut VecState<T>, )> for Bind<T, C, P> {
     type Output = Status<P>;
-    extern "rust-call" fn call_once(self, args: (&'a mut VecState<T>, )) -> Status<P> {
-        let (state, ) = args;
-        (self.parsec)(state)
-                .map(|x:Arc<C>| (self.binder)(x.clone()))
-                .map(|p:Parsec<T, P>| p(state))
-                .unwrap_or_else(|err:SimpleError| Err(err))
+    extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<P> {
+        panic!("Not implement!");
     }
 }
 
@@ -192,11 +177,8 @@ pub fn then<T:'static, C:'static, P:'static>(prefix:Parsec<T, C>,
 
 impl<'a, T:'static, C:'static, P:'static> FnOnce<(&'a mut VecState<T>, )> for Then<T, C, P> {
     type Output = Status<P>;
-    extern "rust-call" fn call_once(self, args: (&'a mut VecState<T>, )) -> Status<P> {
-        let (state, ) = args;
-        (self.prefix)(state)
-                .map(|_:Arc<C>| (self.postfix)(state))
-                .unwrap_or_else(|err:SimpleError| Err(err))
+    extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<P> {
+        panic!("Not implement!");
     }
 }
 
@@ -253,12 +235,8 @@ pub fn over<T:'static, C:'static, P:'static>(prefix:Parsec<T, C>,
 
 impl<'a, T:'static, C:'static, P:'static> FnOnce<(&'a mut VecState<T>, )> for Over<T, C, P> {
     type Output = Status<C>;
-    extern "rust-call" fn call_once(self, args: (&'a mut VecState<T>, )) -> Status<C> {
-        let (state, ) = args;
-        (self.prefix)(state)
-                .map(|x:Arc<C>|->Status<C>{
-                    (self.postfix)(state).map(|_:Arc<P>| x.clone())
-                }).unwrap_or_else(|err:SimpleError| Err(err))
+    extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<C> {
+        panic!("Not implement!");
     }
 }
 
