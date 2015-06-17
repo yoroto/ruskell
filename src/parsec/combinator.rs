@@ -303,41 +303,11 @@ impl<T:'static, C:'static, P:'static> Over<T, C, P>{
 
 
 pub fn many<T:'static, R:'static>(p: Parsec<T, R>) -> Parsec<T, Vec<Arc<R>>> {
-    // let p = p.clone();
-    // parsec!(move |state:&mut VecState<T>|->Status<Vec<Arc<R>>>{
-    //     let p = p.clone();
-    //     let mut rev:Vec<Arc<R>> = Vec::new();
-    //     loop {
-    //         let re = try(p)(state);
-    //         if re.is_err() {
-    //             break;
-    //         } else {
-    //             rev.push(re.unwrap());
-    //         }
-    //     }
-    //     Ok(Arc::new(rev))
-    // })
     let re = Box::new(Either::new(many1(try(p)), pack(Arc::new(Vec::new()))));
     Arc::new(re as Box<Parser<T, Vec<Arc<R>>>>)
 }
 
 pub fn many1<T:'static, R:'static>(p: Parsec<T, R>) -> Parsec<T, Vec<Arc<R>>> {
-    // parsec!(move |state: &mut VecState<T>|->Status<Vec<Arc<R>>>{
-    //     let head = p(state);
-    //     if head.is_err() {
-    //         return Err(head.err().unwrap());
-    //     }
-    //     let mut rev:Vec<Arc<R>> = vec![head.unwrap()];
-    //     loop {
-    //         let re = try(p.clone())(state);
-    //         if re.is_err() {
-    //             break;
-    //         } else {
-    //             rev.push(re.unwrap());
-    //         }
-    //     }
-    //     Ok(Arc::new(rev))
-    // })
     let p = p.clone();
     parsec!(move |state: &mut VecState<T>|->Status<Vec<Arc<R>>>{
         let p = p.clone();
