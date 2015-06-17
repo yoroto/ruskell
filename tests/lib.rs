@@ -2,7 +2,7 @@
 #[macro_use]
 extern crate ruskell;
 use ruskell::parsec::{VecState, State, Status, Parsec};
-use ruskell::parsec::atom::{one, eof};
+use ruskell::parsec::atom::{one, eof, one_of, none_of};
 use ruskell::parsec::combinator::{either, bind, then, many, many1};
 use std::sync::Arc;
 use std::iter::FromIterator;
@@ -62,6 +62,34 @@ fn one_end_test_0() {
     assert_eq!(data, Arc::new('c'));
     let re = eof()(&mut state);
     assert!(re.is_ok());
+}
+
+#[test]
+fn one_of_test_0() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let p = one_of(Arc::new("abc".chars().into_iter().collect::<Vec<char>>()));
+    let re = p(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, Arc::new('a'));
+}
+
+#[test]
+fn none_of_test_0() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let p = none_of(Arc::new("abc".chars().into_iter().collect::<Vec<char>>()));
+    let re = p(&mut state);
+    assert!(re.is_err());
+}
+
+#[test]
+fn none_of_test_1() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let p = none_of(Arc::new("bcdef".chars().into_iter().collect::<Vec<char>>()));
+    let re = p(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, Arc::new('a'));
 }
 
 #[test]

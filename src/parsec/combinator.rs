@@ -2,6 +2,7 @@ use parsec::{VecState, State, SimpleError, Parsec, Parser, Psc, Status, Binder};
 use std::sync::Arc;
 use std::ops::Deref;
 use std::marker::Sized;
+//use std::fmt::{Debug, Display};
 
 pub fn pack<T:'static, R:'static>(data:Arc<R>) -> Parsec<T, R> {
     parsec!(move |_:&mut VecState<T>|-> Status<R> {
@@ -301,7 +302,6 @@ impl<T:'static, C:'static, P:'static> Over<T, C, P>{
         bind(parsec!(move |state:&mut VecState<T>|left(state)), binder.clone())
     }
 }
-
 
 pub fn many<T:'static, R:'static, P:Fn(&mut VecState<T>)->Status<R>+?Sized+'static>(p: Arc<Box<P>>)
         -> Parsec<T, Vec<Arc<R>>> {
