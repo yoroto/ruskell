@@ -6,14 +6,14 @@ use std::fmt;
 
 pub struct VecState<T> {
     index : usize,
-    buffer: Vec<Arc<T>>,
+    buffer: Vec<T>,
 }
 
 impl<A> FromIterator<A> for VecState<A> {
     fn from_iter<T>(iterator: T) -> Self where T:IntoIterator<Item=A> {
         VecState{
             index:0,
-            buffer:Vec::from_iter(iterator.into_iter().map(|x:A|Arc::new(x))),
+            buffer:Vec::from_iter(iterator.into_iter()),
         }
     }
 }
@@ -21,11 +21,11 @@ impl<A> FromIterator<A> for VecState<A> {
 pub trait State<T> {
     fn pos(&self)-> usize;
     fn seek_to(&mut self, usize)->bool;
-    fn next(&mut self)->Option<Arc<T>>;
-    fn next_by(&mut self, &Fn(Arc<T>)->bool)->Status<T>;
+    fn next(&mut self)->Option<T>;
+    fn next_by(&mut self, &Fn(&T)->bool)->Status<T>;
 }
 
-impl<T> State<T> for VecState<T> {
+impl<T> State<T> for VecState<T> where T:Clone {
     fn pos(&self) -> usize {
         self.index
     }
@@ -37,21 +37,21 @@ impl<T> State<T> for VecState<T> {
             false
         }
     }
-    fn next(&mut self)->Option<Arc<T>>{
+    fn next(&mut self)->Option<T>{
         if 0 as usize <= self.index && self.index < self.buffer.len() {
             let item = self.buffer[self.index].clone();
             self.index += 1;
-            Some(item.clone())
+            Some(item)
         } else {
             None
         }
     }
-    fn next_by(&mut self, pred:&Fn(Arc<T>)->bool)->Status<T>{
+    fn next_by(&mut self, pred:&Fn(&T)->bool)->Status<T>{
         if 0 as usize <= self.index && self.index < self.buffer.len() {
-            let item = self.buffer[self.index].clone();
-            if pred(item.clone()) {
+            let ref item = self.buffer[self.index];
+            if pred(item) {
                 self.index += 1;
-                Ok(item)
+                Ok(item.clone())
             } else {
                 Err(SimpleError::new(self.index, String::from("predicate failed")))
             }
@@ -61,6 +61,7 @@ impl<T> State<T> for VecState<T> {
     }
 }
 
+#[derive(Debug)]
 pub struct SimpleError {
     _pos: usize,
     _message: String,
@@ -89,18 +90,14 @@ impl Error for SimpleError {
     }
 }
 
-impl Debug for SimpleError {
-    fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
-        let message = format!("<index:{}, mesage:{}>", self.pos(), self.message());
-        message.fmt(formatter)
-    }
+pub trait Parsec<T, R> {
+    fn parse<S:State<T>>(&self, &mut S)->Status<R>;
 }
 
 pub type Parser<T:'static, R:'static> = Fn(&mut VecState<T>)->Status<R>;
-pub type Parsec<T:'static, R:'static> = Arc<Box<Parser<T, R>>>;
 pub type Binder<T, C, P> = Arc<Box<Fn(Arc<C>)->Parsec<T, P>>>;
 pub type Psc<T:'static> = Arc<Box<T>>;
-pub type Status<T:'static> = Result<Arc<T>, SimpleError>;
+pub type Status<T:'static> = Result<T, SimpleError>;
 
 #[macro_export]
 macro_rules! parsec {
