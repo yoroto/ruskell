@@ -134,7 +134,7 @@ fn either_test_2() {
 fn monad_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
     let a = one('a');
-    let exp = monad(a).bind(Arc::new(Box::new(move |state:&mut State<char>, x:char|->Status<Vec<char>>{
+    let exp = monad(Arc::new(a)).bind(Arc::new(Box::new(move |state:&mut State<char>, x:char|->Status<Vec<char>>{
             one('b').parse(state).map(|y:char| -> Vec<char>{
                 let mut res = Vec::new();
                 res.push(x);
@@ -163,7 +163,7 @@ fn then_test_0() {
     let a = one('a');
     let b = one('b');
     let c = one('c');
-    let exp = monad(a).over(b).then(c);
+    let exp = monad(Arc::new(a)).over(Arc::new(b)).then(Arc::new(c));
     let re = exp(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
@@ -171,16 +171,16 @@ fn then_test_0() {
 }
 
 
-// #[test]
-// fn bind_then_over_test_0() {
-//     let mut state = VecState::from_iter("abc".chars().into_iter());
-//     let a = one(Arc::new('a'));
-//     let exp = then(a, one(Arc::new('b'))).over(one(Arc::new('c'))).over(eof());
-//     let re = exp(&mut state);
-//     assert!(re.is_ok());
-//     let data = re.unwrap();
-//     assert_eq!(data, Arc::new('b'));
-// }
+#[test]
+fn bind_then_over_test_0() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one('a');
+    let exp = monad(Arc::new(a)).then(Arc::new(one('b'))).over(Arc::new(one('c'))).over(Arc::new(eof()));
+    let re = exp(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, 'b');
+}
 //
 // #[test]
 // fn many_test_0() {
