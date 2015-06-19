@@ -142,7 +142,7 @@ impl<T> Parsec<T, T> for OneOf<T> where T:Eq+Display+Clone+Debug {
                     return Ok(it);
                 }
             }
-            let message = format!("<expect one of {:?}, got:{:?}>", self.elements, it);
+            let message = format!("<expect one of {:?}, got:{}>", self.elements, it);
             Err(SimpleError::new(state.pos(), String::from(message)))
         }
     }
@@ -195,7 +195,7 @@ impl<T> Parsec<T, T> for NoneOf<T> where T:Eq+Display+Clone+Debug {
             let it = next.unwrap();
             for d in self.elements.iter() {
                 if d == &it {
-                    let message = format!("<expect none of {:?}, got:{:?}>", self.elements, it);
+                    let message = format!("<expect none of {:?}, got:{}>", self.elements, it);
                     return Err(SimpleError::new(state.pos(), String::from(message)))
                 }
             }
