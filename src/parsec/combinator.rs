@@ -118,6 +118,23 @@ impl<'a, T, R> Fn<(&'a mut State<T>, )> for Either<T, R> where T:Clone{
     }
 }
 
+impl<T, R> Clone for Either<T, R> where T:Clone {
+    fn clone(&self)->Self {
+        Either{x:self.x.clone(), y:self.y.clone()}
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.x = source.x.clone();
+        self.y = source.y.clone();
+    }
+}
+
+impl<T, R> Debug for Either<T, R> where T:Clone {
+    fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
+        "<either parsec>".fmt(formatter)
+    }
+}
+
 pub fn either<T:'static, R:'static>(x: Arc<Parsec<T, R>>, y:Arc<Parsec<T, R>>)->Either<T, R> where T:Clone{
         Either::new(x, y)
 }
@@ -126,20 +143,41 @@ pub struct Many<T, R> {
     parsec: Arc<Parsec<T, R>>,
 }
 
-impl<T, R> Many<T, R> where T:Clone, R:Clone {
+impl<T, R> Many<T, R> where T:Clone, R:Clone+Debug {
     pub fn new(p:Arc<Parsec<T, R>>) -> Many<T, R> {
         Many{parsec:p.clone()}
     }
 }
 
-impl<T:'static, R:'static> Parsec<T, Vec<R>> for Many<T, R> where T:Clone, R:Clone {
+impl<T:'static, R:'static> Parsec<T, Vec<R>> for Many<T, R> where T:Clone, R:Clone+Debug {
     fn parse(&self, state:&mut State<T>)->Status<Vec<R>> {
         let left = Arc::new(many1(Arc::new(try(self.parsec.clone()))));
         either(left, Arc::new(pack(Vec::new()))).parse(state)
     }
 }
 
-impl<T, R> Clone for Many<T, R> where T:Clone, R:Clone {
+impl<'a, T:'static, R:'static> FnOnce<(&'a mut State<T>, )> for Many<T, R> where T:Clone, R:Clone+Debug{
+    type Output = Status<Vec<R>>;
+    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T:'static, R:'static> FnMut<(&'a mut State<T>, )> for Many<T, R> where T:Clone, R:Clone+Debug{
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T:'static, R:'static> Fn<(&'a mut State<T>, )> for Many<T, R> where T:Clone, R:Clone+Debug{
+    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<Vec<R>> {
+        //self.call_once(args)
+        let (state, ) = args;
+        self.parse(state)
+    }
+}
+
+impl<T, R> Clone for Many<T, R> where T:Clone, R:Clone+Debug {
     fn clone(&self)->Self {
         Many{parsec:self.parsec.clone()}
     }
@@ -149,35 +187,13 @@ impl<T, R> Clone for Many<T, R> where T:Clone, R:Clone {
     }
 }
 
-impl<T, R> Debug for Many<T, R> where T:Clone, R:Clone{
+impl<T, R> Debug for Many<T, R> where T:Clone, R:Clone+Debug{
     fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
         "<many parsec>".fmt(formatter)
     }
 }
 
-impl<'a, T:'static, R:'static> FnOnce<(&'a mut State<T>, )> for Many<T, R> where T:Clone, R:Clone{
-    type Output = Status<Vec<R>>;
-    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
-        panic!("Not implement!");
-    }
-}
-
-impl<'a, T:'static, R:'static> FnMut<(&'a mut State<T>, )> for Many<T, R> where T:Clone, R:Clone{
-    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
-        panic!("Not implement!");
-    }
-}
-
-impl<'a, T:'static, R:'static> Fn<(&'a mut State<T>, )> for Many<T, R> where T:Clone, R:Clone{
-    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<Vec<R>> {
-        //self.call_once(args)
-        let (state, ) = args;
-        self.parse(state)
-    }
-}
-
-
-pub fn many<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many<T, R> where T:Clone, R:Clone {
+pub fn many<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many<T, R> where T:Clone, R:Clone+Debug {
     Many::new(p)
 }
 
@@ -185,13 +201,13 @@ pub struct Many1<T, R> {
     parsec: Arc<Parsec<T, R>>,
 }
 
-impl<T, R> Many1<T, R> where T:Clone, R:Clone {
+impl<T, R> Many1<T, R> where T:Clone, R:Clone+Debug {
     pub fn new(p:Arc<Parsec<T, R>>) -> Many1<T, R> {
         Many1{parsec:p.clone()}
     }
 }
 
-impl<T:'static, R:'static> Parsec<T, Vec<R>> for Many1<T, R> where T:Clone, R:Clone {
+impl<T:'static, R:'static> Parsec<T, Vec<R>> for Many1<T, R> where T:Clone, R:Clone+Debug {
     fn parse(&self, state:&mut State<T>)->Status<Vec<R>> {
         let parsec = self.parsec.clone();
         monad(parsec.clone())
@@ -206,7 +222,7 @@ impl<T:'static, R:'static> Parsec<T, Vec<R>> for Many1<T, R> where T:Clone, R:Cl
     }
 }
 
-impl<T, R> Clone for Many1<T, R> where T:Clone, R:Clone {
+impl<T, R> Clone for Many1<T, R> where T:Clone, R:Clone+Debug {
     fn clone(&self)->Self {
         Many1{parsec:self.parsec.clone()}
     }
@@ -216,26 +232,26 @@ impl<T, R> Clone for Many1<T, R> where T:Clone, R:Clone {
     }
 }
 
-impl<T, R> Debug for Many1<T, R> where T:Clone, R:Clone{
+impl<T, R> Debug for Many1<T, R> where T:Clone, R:Clone+Debug{
     fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
         "<many1 parsec>".fmt(formatter)
     }
 }
 
-impl<'a, T:'static, R:'static> FnOnce<(&'a mut State<T>, )> for Many1<T, R> where T:Clone, R:Clone{
+impl<'a, T:'static, R:'static> FnOnce<(&'a mut State<T>, )> for Many1<T, R> where T:Clone, R:Clone+Debug{
     type Output = Status<Vec<R>>;
     extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T:'static, R:'static> FnMut<(&'a mut State<T>, )> for Many1<T, R> where T:Clone, R:Clone{
+impl<'a, T:'static, R:'static> FnMut<(&'a mut State<T>, )> for Many1<T, R> where T:Clone, R:Clone+Debug {
     extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T:'static, R:'static> Fn<(&'a mut State<T>, )> for Many1<T, R> where T:Clone, R:Clone{
+impl<'a, T:'static, R:'static> Fn<(&'a mut State<T>, )> for Many1<T, R> where T:Clone, R:Clone+Debug {
     extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<Vec<R>> {
         //self.call_once(args)
         let (state, ) = args;
@@ -243,6 +259,6 @@ impl<'a, T:'static, R:'static> Fn<(&'a mut State<T>, )> for Many1<T, R> where T:
     }
 }
 
-pub fn many1<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many1<T, R> where T:Clone, R:Clone {
+pub fn many1<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many1<T, R> where T:Clone, R:Clone+Debug {
     Many1::new(p)
 }
