@@ -1,7 +1,6 @@
 use parsec::{VecState, State, SimpleError, Error, Parsec, Status};
 use std::fmt::{Debug, Display};
 use std::sync::Arc;
-use std::ops::Deref;
 use std::marker::PhantomData;
 
 #[derive(Debug, Clone)]
@@ -16,7 +15,7 @@ impl<T> One<T> where T:Eq+Display+Clone {
 }
 
 impl<T> Parsec<T, T> for One<T> where T:Eq+Display+Clone {
-    fn parse<S:State<T>>(&self, state:&mut S)->Status<T>{
+    fn parse(&self, state:&mut State<T>)->Status<T>{
         let ref value = self.element;
         let val = state.next_by(&|val:&T|val.eq(value));
         val.map_err(
@@ -65,7 +64,7 @@ impl<T> Eof<T>{
 }
 
 impl<T> Parsec<T, ()> for Eof<T> where T:Clone+Display {
-    fn parse<S:State<T>>(&self, state:&mut S)->Status<()>{
+    fn parse(&self, state:&mut State<T>)->Status<()>{
         let val = state.next();
         if val.is_none() {
             Ok(())
@@ -77,21 +76,21 @@ impl<T> Parsec<T, ()> for Eof<T> where T:Clone+Display {
     }
 }
 
-impl<'a, T> FnOnce<(&'a mut VecState<T>, )> for Eof<T> {
+impl<'a, S, T> FnOnce<(&'a mut S, )> for Eof<T> where S:State<T>{
     type Output = Status<()>;
-    extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<()> {
+    extern "rust-call" fn call_once(self, _: (&'a mut S, )) -> Status<()> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T> FnMut<(&'a mut VecState<T>, )> for Eof<T> {
-    extern "rust-call" fn call_mut(&mut self, _: (&'a mut VecState<T>, )) -> Status<()> {
+impl<'a, S, T> FnMut<(&'a mut S, )> for Eof<T> where S:State<T>{
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut S, )) -> Status<()> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T> Fn<(&'a mut VecState<T>, )> for Eof<T> where T:Clone+Display {
-    extern "rust-call" fn call(&self, args: (&'a mut VecState<T>, )) -> Status<()> {
+impl<'a, S, T> Fn<(&'a mut S, )> for Eof<T> where T:Clone+Display, S:State<T> {
+    extern "rust-call" fn call(&self, args: (&'a mut S, )) -> Status<()> {
         let (state, ) = args;
         self.parse(state)
     }
@@ -114,7 +113,7 @@ impl<T> OneOf<T> where T:Eq+Display+Clone+Debug {
 }
 
 impl<T> Parsec<T, T> for OneOf<T> where T:Eq+Display+Clone+Debug {
-    fn parse<S:State<T>>(&self, state:&mut S)->Status<T>{
+    fn parse(&self, state:&mut State<T>)->Status<T>{
         let next = state.next();
         if next.is_none() {
             Err(SimpleError::new(state.pos(), String::from("eof")))
@@ -169,7 +168,7 @@ impl<T> NoneOf<T> where T:Eq+Display+Clone+Debug {
 }
 
 impl<T> Parsec<T, T> for NoneOf<T> where T:Eq+Display+Clone+Debug {
-    fn parse<S:State<T>>(&self, state:&mut S)->Status<T>{
+    fn parse(&self, state:&mut State<T>)->Status<T>{
         let next = state.next();
         if next.is_none() {
             Err(SimpleError::new(state.pos(), String::from("eof")))
@@ -224,7 +223,7 @@ impl<I, T> Pack<I, T> where I: Clone, T:Clone {
 }
 
 impl<I, T> Parsec<I, T> for Pack<I, T> where I: Clone, T:Clone {
-    fn parse<S:State<I>>(&self, state:&mut S)->Status<T>{
+    fn parse(&self, _:&mut State<I>)->Status<T> {
         Ok(self.element.clone())
     }
 }
@@ -267,8 +266,8 @@ impl<I> Fail<I> where I: Clone {
 }
 
 impl<I> Parsec<I, ()> for Fail<I> where I: Clone {
-    fn parse<S:State<I>>(&self, state:&mut S)->Status<()>{
-        Err(SimpleError::new(state.pos(), String::from_str(self.message.as_str())))
+    fn parse(&self, state:&mut State<I>)->Status<()>{
+        Err(SimpleError::new(state.pos(), String::from(self.message.as_str())))
     }
 }
 

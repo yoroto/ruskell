@@ -1,25 +1,22 @@
-use parsec::{VecState, State, SimpleError, Parsec, Parser, Psc, Status};
+use parsec::{VecState, State, Parsec, Status};
 use std::marker::PhantomData;
-use std::sync::Arc;
-use std::ops::{Deref, BitOr};
-use std::marker::Sized;
 //use std::fmt::{Debug, Display};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Try<T, R, P>{
     parsec : P,
     input: PhantomData<T>,
     output: PhantomData<R>,
 }
 
-impl<T, R, P> Try<T, R, P> where P:Parsec<T, R>, T:Clone+Copy  {
+impl<T, R, P> Try<T, R, P> where P:Parsec<T, R>, T:Clone  {
     pub fn new(p:P) -> Try<T, R, P> {
         Try{parsec:p, input:PhantomData, output:PhantomData}
     }
 }
 
-impl<T, R, P> Parsec<T, R> for Try<T, R, P> where P:Parsec<T, R>, T:Clone+Copy {
-    fn parse<S>(&self, state: &mut S)->Status<R> where S:State<T> {
+impl<T, R, P> Parsec<T, R> for Try<T, R, P> where P:Parsec<T, R>, T:Clone {
+    fn parse(&self, state: &mut State<T>)->Status<R> {
         let pos = state.pos();
         let res = self.parsec.parse(state);
         if res.is_err() {
@@ -29,93 +26,94 @@ impl<T, R, P> Parsec<T, R> for Try<T, R, P> where P:Parsec<T, R>, T:Clone+Copy {
     }
 }
 
-impl<'a, T, R, P> FnOnce<(&'a mut VecState<T>, )> for Try<T, R, P> where P:Parsec<T, R>, T:Clone+Copy {
+impl<'a, T, R, P> FnOnce<(&'a mut VecState<T>, )> for Try<T, R, P> where P:Parsec<T, R>, T:Clone {
     type Output = Status<R>;
     extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<R> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T, R, P> FnMut<(&'a mut VecState<T>, )> for Try<T, R, P> where P:Parsec<T, R>, T:Clone+Copy {
+impl<'a, T, R, P> FnMut<(&'a mut VecState<T>, )> for Try<T, R, P> where P:Parsec<T, R>, T:Clone {
     extern "rust-call" fn call_mut(&mut self, _: (&'a mut VecState<T>, )) -> Status<R> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T, R, P> Fn<(&'a mut VecState<T>, )> for Try<T, R, P> where P:Parsec<T, R>, T:Clone+Copy {
+impl<'a, T, R, P> Fn<(&'a mut VecState<T>, )> for Try<T, R, P> where P:Parsec<T, R>, T:Clone {
     extern "rust-call" fn call(&self, args: (&'a mut VecState<T>, )) -> Status<R> {
         let (state, ) = args;
         self.parse(state)
     }
 }
 
-// pub struct Either<T:'static, R:'static>{
-//     x: Parsec<T, R>,
-//     y: Parsec<T, R>,
-// }
+#[derive(Debug, Clone)]
+pub struct Either<T, R, PX, PY>{
+    x: PX,
+    y: PY,
+    input_type: PhantomData<T>,
+    result_type: PhantomData<R>,
+}
+
+impl<T, R, PX, PY> Either<T, R, PX, PY>
+where T:Clone, R:Clone, PX:Parsec<T, R>+Clone, PY:Parsec<T, R>+Clone{
+
+    pub fn new(x:PX, y:PY) -> Either<T, R, PX, PY> {
+        Either{x:x.clone(), y:y.clone(), input_type:PhantomData, result_type:PhantomData}
+    }
+
+    pub fn or<PZ>(&self, z:PZ)-> Either<T, R, Self, PZ> where PZ:Parsec<T, R>+Clone {
+        let left = Either::new(self.x.clone(), self.y.clone());
+        Either::new(left, z)
+    }
+}
+
+impl<T, R, PX, PY> Parsec<T, R> for Either<T, R, PX, PY>
+where T:Clone, PX:Parsec<T, R>+Clone, PY:Parsec<T, R>+Clone{
+    fn parse(&self, state:&mut State<T>)->Status<R> {
+        let pos = state.pos();
+        let val = self.x.parse(state);
+        if val.is_ok() {
+            val
+        } else {
+            if pos == state.pos() {
+                self.y.parse(state)
+            } else {
+                val
+            }
+        }
+    }
+}
+
+impl<'a, T, R, PX, PY> FnOnce<(&'a mut VecState<T>, )> for Either<T, R, PX, PY>
+        where T:Clone, PX:Parsec<T, R>+Clone, PY:Parsec<T, R>+Clone{
+    type Output = Status<R>;
+    extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<R> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T, R, PX, PY> FnMut<(&'a mut VecState<T>, )> for Either<T, R, PX, PY>
+        where T:Clone, PX:Parsec<T, R>+Clone, PY:Parsec<T, R>+Clone{
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut VecState<T>, )) -> Status<R> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T, R, PX, PY> Fn<(&'a mut VecState<T>, )> for Either<T, R, PX, PY>
+        where T:Clone, PX:Parsec<T, R>+Clone, PY:Parsec<T, R>+Clone{
+    extern "rust-call" fn call(&self, args: (&'a mut VecState<T>, )) -> Status<R> {
+        //self.call_once(args)
+        let (state, ) = args;
+        self.parse(state)
+    }
+}
+
+pub fn either<T, R, PX, PY>(x: PX, y:PY)->Either<T, R, PX, PY>
+    where T:Clone, R:Clone, PX:Parsec<T, R>+Clone, PY:Parsec<T, R>+Clone{
+        Either::new(x, y)
+}
+
 //
-// pub fn either<T:'static, R:'static>(x: Parsec<T, R>, y: Parsec<T, R>)-> Psc<Either<T, R>> {
-//     parsec!(Either::new(x.clone(), y.clone()))
-// }
-//
-// impl<'a, T:'static, R:'static> FnOnce<(&'a mut VecState<T>, )> for Either<T, R> {
-//     type Output = Status<R>;
-//     extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<R> {
-//         panic!("Not implement!");
-//     }
-// }
-//
-// impl<'a, T:'static, R:'static> FnMut<(&'a mut VecState<T>, )> for Either<T, R> {
-//     extern "rust-call" fn call_mut(&mut self, args: (&'a mut VecState<T>, )) -> Status<R> {
-//         //self.call_once(args)
-//         let (state, ) = args;
-//         let pos = state.pos();
-//         let val = (self.x)(state);
-//         if val.is_ok() {
-//             val
-//         } else {
-//             if pos == state.pos() {
-//                 (self.y)(state)
-//             } else {
-//                 val
-//             }
-//         }
-//     }
-// }
-//
-// impl<'a, T:'static, R:'static> Fn<(&'a mut VecState<T>, )> for Either<T, R> {
-//     extern "rust-call" fn call(&self, args: (&'a mut VecState<T>, )) -> Status<R> {
-//         //self.call_once(args)
-//         let (state, ) = args;
-//         let pos = state.pos();
-//         let val = (self.x)(state);
-//         if val.is_ok() {
-//             val
-//         } else {
-//             if pos == state.pos() {
-//                 (self.y)(state)
-//             } else {
-//                 val
-//             }
-//         }
-//     }
-// }
-//
-// impl<T:'static, R:'static> Either<T, R> {
-//     pub fn new(x: Parsec<T, R>, y:Parsec<T, R>)->Either<T, R> {
-//         Either{
-//             x: x.clone(),
-//             y: y.clone(),
-//         }
-//     }
-//
-//     pub fn or(&self, p:Parsec<T, R>) -> Psc<Self> {
-//         let right = Either::new(self.y.clone(), p.clone());
-//         either(self.x.clone(), Arc::new(Box::new(move |state:&mut VecState<T>|right(state))))
-//     }
-// }
-//
-// // Type Continuation Then
 // pub struct Bind<T:'static, C:'static, P:'static> {
 //     parsec: Parsec<T, C>,
 //     binder: Binder<T, C, P>,
@@ -126,7 +124,7 @@ impl<'a, T, R, P> Fn<(&'a mut VecState<T>, )> for Try<T, R, P> where P:Parsec<T,
 //     parsec!(Bind::new(parsec, binder))
 // }
 //
-// impl<'a, T:'static, C:'static, P:'static> FnOnce<(&'a mut VecState<T>, )> for Bind<T, C, P> {
+// impl<'a, T:'static, C:'static, P:'static> Fn<(&'a mut VecState<T>, )> for Bind<T, C, P> {
 //     type Output = Status<P>;
 //     extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<P> {
 //         panic!("Not implement!");
@@ -195,7 +193,7 @@ impl<'a, T, R, P> Fn<(&'a mut VecState<T>, )> for Try<T, R, P> where P:Parsec<T,
 //     parsec!(Then::new(prefix, postfix))
 // }
 //
-// impl<'a, T:'static, C:'static, P:'static> FnOnce<(&'a mut VecState<T>, )> for Then<T, C, P> {
+// impl<'a, T:'static, C:'static, P:'static> Fn<(&'a mut VecState<T>, )> for Then<T, C, P> {
 //     type Output = Status<P>;
 //     extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<P> {
 //         panic!("Not implement!");
@@ -253,7 +251,7 @@ impl<'a, T, R, P> Fn<(&'a mut VecState<T>, )> for Try<T, R, P> where P:Parsec<T,
 //     parsec!(Over::new(prefix, postfix))
 // }
 //
-// impl<'a, T:'static, C:'static, P:'static> FnOnce<(&'a mut VecState<T>, )> for Over<T, C, P> {
+// impl<'a, T:'static, C:'static, P:'static> Fn<(&'a mut VecState<T>, )> for Over<T, C, P> {
 //     type Output = Status<C>;
 //     extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<C> {
 //         panic!("Not implement!");

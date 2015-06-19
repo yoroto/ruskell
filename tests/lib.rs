@@ -1,13 +1,11 @@
 #![feature(collections)]
 #[macro_use]
 extern crate ruskell;
-use ruskell::parsec::{VecState, State, Status, Parsec};
+use ruskell::parsec::{VecState, State, Status, Parsec, monad};
 use ruskell::parsec::atom::{one, eof, one_of, none_of};
-// use ruskell::parsec::combinator::{either, bind, then, many, many1};
+use ruskell::parsec::combinator::{either};//, bind, then, many, many1};
 use std::sync::Arc;
 use std::iter::FromIterator;
-use std::ops::Deref;
-
 
 #[test]
 fn state_works() {
@@ -95,93 +93,84 @@ fn none_of_test_1() {
     assert_eq!(data, 'a');
 }
 
-// #[test]
-// fn either_test_0() {
-//     let mut state = VecState::from_iter("abc".chars().into_iter());
-//     let a = one(Arc::new('a'));
-//     let b = one(Arc::new('b'));
-//     let e = &mut either(b, a);
-//     let re = e(&mut state);
-//     assert!(re.is_ok());
-//     let data = re.unwrap();
-//     assert_eq!(data, Arc::new('a'));
-// }
-//
-// #[test]
-// fn either_test_1() {
-//     let mut state = VecState::from_iter("abc".chars().into_iter());
-//     let a = one(Arc::new('a'));
-//     let b = one(Arc::new('b'));
-//     let e = &mut either(a, b);
-//     let re = e(&mut state);
-//     assert!(re.is_ok());
-//     let data = re.unwrap();
-//     assert_eq!(data, Arc::new('a'));
-// }
-//
-// #[test]
-// fn either_test_2() {
-//     let mut state = VecState::from_iter("abc".chars().into_iter());
-//     let a = one(Arc::new('a'));
-//     let b = one(Arc::new('b'));
-//     let c = one(Arc::new('c'));
-//     let e = either(b, c).or(a);
-//     let re = e(&mut state);
-//     assert!(re.is_ok());
-//     let data = re.unwrap();
-//     assert_eq!(data, Arc::new('a'));
-// }
-//
-// #[test]
-// fn bind_test_0() {
-//     let mut state = VecState::from_iter("abc".chars().into_iter());
-//     let a = one(Arc::new('a'));
-//     let exp = bind(a, parsec!(|x:Arc<char>|->Parsec<char, Vec<Arc<char>>>{
-//             //let x = x.clone();
-//             parsec!(move |state:&mut VecState<char>|->Status<Vec<Arc<char>>>{
-//                 one(Arc::new('b'))(state).map(|y:Arc<char>| -> Arc<Vec<Arc<char>>>{
-//                     // let x = x.clone();
-//                     // let y = y.clone();
-//                     let mut res = Vec::new();
-//                     res.push(x.clone());
-//                     res.push(y.clone());
-//                     Arc::new(res)
-//                 })
-//             })
-//         })).bind(parsec!(move |v:Arc<Vec<Arc<char>>>|->Parsec<char, Vec<Arc<char>>>{
-//             parsec!(move |state: &mut VecState<char>|->Status<Vec<Arc<char>>>{
-//                 let v = v.clone();
-//                 one(Arc::new('c'))(state).map(|x:Arc<char>| -> Arc<Vec<Arc<char>>> {
-//                     // let v = v.clone();
-//                     // let x = x.clone();
-//                     let mut res = Vec::new();
-//                     res.push_all(v.deref());
-//                     res.push(x.clone());
-//                     Arc::new(res)
-//                 })
-//             })
-//         }));
-//     let re = exp(&mut state);
-//     assert!(re.is_ok());
-//     let data = re.unwrap();
-//     let ver = Arc::new((vec!['a', 'b', 'c']).into_iter().map(|x:char| Arc::new(x)).collect());
-//     assert_eq!(data, ver);
-// }
-//
-// #[test]
-// fn then_test_0() {
-//     let mut state = VecState::from_iter("abc".chars().into_iter());
-//     let a = one(Arc::new('a'));
-//     let b = one(Arc::new('b'));
-//     let c = one(Arc::new('c'));
-//     let exp = then(a, b).then(c);
-//     let re = exp(&mut state);
-//     assert!(re.is_ok());
-//     let data = re.unwrap();
-//     assert_eq!(data, Arc::new('c'));
-// }
-//
-//
+#[test]
+fn either_test_0() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one('a');
+    let b = one('b');
+    let e = &mut either(b, a);
+    let re = e(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, 'a');
+}
+
+#[test]
+fn either_test_1() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one('a');
+    let b = one('b');
+    let e = &mut either(a, b);
+    let re = e(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, 'a');
+}
+
+#[test]
+fn either_test_2() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one('a');
+    let b = one('b');
+    let c = one('c');
+    let e = either(b, c).or(a);
+    let re = e(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, 'a');
+}
+
+#[test]
+fn monad_test_0() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one('a');
+    let exp = monad(a).bind(Arc::new(Box::new(move |state:&mut State<char>, x:char|->Status<Vec<char>>{
+            one('b').parse(state).map(|y:char| -> Vec<char>{
+                let mut res = Vec::new();
+                res.push(x);
+                res.push(y);
+                res
+            })
+        }))).bind(
+            Arc::new(Box::new(move |state: &mut State<char>, v:Vec<char>|->Status<Vec<char>>{
+                one('c').parse(state).map(|x:char| -> Vec<char> {
+                    let mut res = Vec::new();
+                    res.push_all(&v);
+                    res.push(x);
+                    res
+                })
+        })));
+    let re = exp(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    let ver = vec!['a', 'b', 'c'];
+    assert_eq!(data, ver);
+}
+
+#[test]
+fn then_test_0() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one('a');
+    let b = one('b');
+    let c = one('c');
+    let exp = monad(a).over(b).then(c);
+    let re = exp(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, 'c');
+}
+
+
 // #[test]
 // fn bind_then_over_test_0() {
 //     let mut state = VecState::from_iter("abc".chars().into_iter());
