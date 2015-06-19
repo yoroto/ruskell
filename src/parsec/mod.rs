@@ -3,6 +3,7 @@ use std::iter::FromIterator;
 use std::sync::Arc;
 use std::fmt::{Debug, Formatter};
 use std::fmt;
+use std::clone::Clone;
 
 pub struct VecState<T> {
     index : usize,
@@ -151,24 +152,24 @@ where T:Clone, P:Clone {
     }
 }
 
-impl<'a, T, C, P> FnOnce<(&'a mut VecState<T>, )> for Monad<T, C, P>
+impl<'a, T, C, P> FnOnce<(&'a mut State<T>, )> for Monad<T, C, P>
 where T:Clone, P:Clone {
     type Output = Status<P>;
-    extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<P> {
+    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<P> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T, C, P> FnMut<(&'a mut VecState<T>, )> for Monad<T, C, P>
+impl<'a, T, C, P> FnMut<(&'a mut State<T>, )> for Monad<T, C, P>
 where T:Clone, P:Clone {
-    extern "rust-call" fn call_mut(&mut self, _: (&'a mut VecState<T>, )) -> Status<P> {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<P> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T, C, P> Fn<(&'a mut VecState<T>, )> for Monad<T, C, P>
+impl<'a, T, C, P> Fn<(&'a mut State<T>, )> for Monad<T, C, P>
 where T:Clone, P:Clone {
-    extern "rust-call" fn call(&self, args: (&'a mut VecState<T>, )) -> Status<P> {
+    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<P> {
         let (state, ) = args;
         self.parse(state)
     }

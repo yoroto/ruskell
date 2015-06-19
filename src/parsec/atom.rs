@@ -1,4 +1,4 @@
-use parsec::{VecState, State, SimpleError, Error, Parsec, Status};
+use parsec::{State, SimpleError, Error, Parsec, Status};
 use std::fmt::{Debug, Display};
 use std::sync::Arc;
 use std::marker::PhantomData;
@@ -28,21 +28,21 @@ impl<T> Parsec<T, T> for One<T> where T:Eq+Display+Clone {
     }
 }
 
-impl<'a, T> FnOnce<(&'a mut VecState<T>, )> for One<T> {
+impl<'a, T> FnOnce<(&'a mut State<T>, )> for One<T> {
     type Output = Status<T>;
-    extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<T> {
+    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<T> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T> FnMut<(&'a mut VecState<T>, )> for One<T> {
-    extern "rust-call" fn call_mut(&mut self, _: (&'a mut VecState<T>, )) -> Status<T> {
+impl<'a, T> FnMut<(&'a mut State<T>, )> for One<T> {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<T> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T> Fn<(&'a mut VecState<T>, )> for One<T> where T:Eq+Display+Clone {
-    extern "rust-call" fn call(&self, args: (&'a mut VecState<T>, )) -> Status<T> {
+impl<'a, T> Fn<(&'a mut State<T>, )> for One<T> where T:Eq+Display+Clone {
+    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<T> {
         let (state, ) = args;
         self.parse(state)
     }
@@ -100,6 +100,7 @@ pub fn eof<T>() -> Eof<T> {
     Eof::new()
 }
 
+#[derive(Debug, Clone)]
 pub struct OneOf<T> {
     elements: Vec<T>,
 }
@@ -130,21 +131,21 @@ impl<T> Parsec<T, T> for OneOf<T> where T:Eq+Display+Clone+Debug {
     }
 }
 
-impl<'a, T> FnOnce<(&'a mut VecState<T>, )> for OneOf<T> {
+impl<'a, T> FnOnce<(&'a mut State<T>, )> for OneOf<T> {
     type Output = Status<T>;
-    extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<T> {
+    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<T> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T> FnMut<(&'a mut VecState<T>, )> for OneOf<T> {
-    extern "rust-call" fn call_mut(&mut self, _: (&'a mut VecState<T>, )) -> Status<T> {
+impl<'a, T> FnMut<(&'a mut State<T>, )> for OneOf<T> {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<T> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T> Fn<(&'a mut VecState<T>, )> for OneOf<T> where T:Eq+Clone+Display+Debug {
-    extern "rust-call" fn call(&self, args: (&'a mut VecState<T>, )) -> Status<T> {
+impl<'a, T> Fn<(&'a mut State<T>, )> for OneOf<T> where T:Eq+Clone+Display+Debug {
+    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<T> {
         let (state, ) = args;
         self.parse(state)
     }
@@ -155,6 +156,7 @@ pub fn one_of<T:'static+Eq+Debug+Display>(elements:&Vec<T>)->OneOf<T>
     OneOf::new(&elements)
 }
 
+#[derive(Debug, Clone)]
 pub struct NoneOf<T> {
     elements: Vec<T>,
 }
@@ -185,21 +187,21 @@ impl<T> Parsec<T, T> for NoneOf<T> where T:Eq+Display+Clone+Debug {
     }
 }
 
-impl<'a, T> FnOnce<(&'a mut VecState<T>, )> for NoneOf<T> {
+impl<'a, T> FnOnce<(&'a mut State<T>, )> for NoneOf<T> {
     type Output = Status<T>;
-    extern "rust-call" fn call_once(self, _: (&'a mut VecState<T>, )) -> Status<T> {
+    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<T> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T> FnMut<(&'a mut VecState<T>, )> for NoneOf<T> {
-    extern "rust-call" fn call_mut(&mut self, _: (&'a mut VecState<T>, )) -> Status<T> {
+impl<'a, T> FnMut<(&'a mut State<T>, )> for NoneOf<T> {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<T> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T> Fn<(&'a mut VecState<T>, )> for NoneOf<T> where T:Eq+Clone+Display+Debug {
-    extern "rust-call" fn call(&self, args: (&'a mut VecState<T>, )) -> Status<T> {
+impl<'a, T> Fn<(&'a mut State<T>, )> for NoneOf<T> where T:Eq+Clone+Display+Debug {
+    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<T> {
         let (state, ) = args;
         self.parse(state)
     }
@@ -228,21 +230,21 @@ impl<I, T> Parsec<I, T> for Pack<I, T> where I: Clone, T:Clone {
     }
 }
 
-impl<'a, I, T> FnOnce<(&'a mut VecState<I>, )> for Pack<I, T> where I: Clone, T:Clone {
+impl<'a, I, T> FnOnce<(&'a mut State<I>, )> for Pack<I, T> where I: Clone, T:Clone {
     type Output = Status<T>;
-    extern "rust-call" fn call_once(self, _: (&'a mut VecState<I>, )) -> Status<T> {
+    extern "rust-call" fn call_once(self, _: (&'a mut State<I>, )) -> Status<T> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, I, T> FnMut<(&'a mut VecState<I>, )> for Pack<I, T> where I: Clone, T:Clone {
-    extern "rust-call" fn call_mut(&mut self, _: (&'a mut VecState<I>, )) -> Status<T> {
+impl<'a, I, T> FnMut<(&'a mut State<I>, )> for Pack<I, T> where I: Clone, T:Clone {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<I>, )) -> Status<T> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, I, T> Fn<(&'a mut VecState<I>, )> for Pack<I, T> where I: Clone, T:Clone {
-    extern "rust-call" fn call(&self, args: (&'a mut VecState<I>, )) -> Status<T> {
+impl<'a, I, T> Fn<(&'a mut State<I>, )> for Pack<I, T> where I: Clone, T:Clone {
+    extern "rust-call" fn call(&self, args: (&'a mut State<I>, )) -> Status<T> {
         let (state, ) = args;
         self.parse(state)
     }
@@ -271,21 +273,21 @@ impl<I> Parsec<I, ()> for Fail<I> where I: Clone {
     }
 }
 
-impl<'a, I> FnOnce<(&'a mut VecState<I>, )> for Fail<I> where I: Clone {
+impl<'a, I> FnOnce<(&'a mut State<I>, )> for Fail<I> where I: Clone {
     type Output = Status<()>;
-    extern "rust-call" fn call_once(self, _: (&'a mut VecState<I>, )) -> Status<()> {
+    extern "rust-call" fn call_once(self, _: (&'a mut State<I>, )) -> Status<()> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, I> FnMut<(&'a mut VecState<I>, )> for Fail<I> where I: Clone {
-    extern "rust-call" fn call_mut(&mut self, _: (&'a mut VecState<I>, )) -> Status<()> {
+impl<'a, I> FnMut<(&'a mut State<I>, )> for Fail<I> where I: Clone {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<I>, )) -> Status<()> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, I> Fn<(&'a mut VecState<I>, )> for Fail<I> where I: Clone {
-    extern "rust-call" fn call(&self, args: (&'a mut VecState<I>, )) -> Status<()> {
+impl<'a, I> Fn<(&'a mut State<I>, )> for Fail<I> where I: Clone {
+    extern "rust-call" fn call(&self, args: (&'a mut State<I>, )) -> Status<()> {
         let (state, ) = args;
         self.parse(state)
     }

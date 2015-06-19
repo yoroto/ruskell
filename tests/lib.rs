@@ -96,8 +96,8 @@ fn none_of_test_1() {
 #[test]
 fn either_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = one('a');
-    let b = one('b');
+    let a = Arc::new(one('a'));
+    let b = Arc::new(one('b'));
     let e = &mut either(b, a);
     let re = e(&mut state);
     assert!(re.is_ok());
@@ -108,8 +108,8 @@ fn either_test_0() {
 #[test]
 fn either_test_1() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = one('a');
-    let b = one('b');
+    let a = Arc::new(one('a'));
+    let b = Arc::new(one('b'));
     let e = &mut either(a, b);
     let re = e(&mut state);
     assert!(re.is_ok());
@@ -120,9 +120,9 @@ fn either_test_1() {
 #[test]
 fn either_test_2() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = one('a');
-    let b = one('b');
-    let c = one('c');
+    let a = Arc::new(one('a'));
+    let b = Arc::new(one('b'));
+    let c = Arc::new(one('c'));
     let e = either(b, c).or(a);
     let re = e(&mut state);
     assert!(re.is_ok());
@@ -181,7 +181,7 @@ fn bind_then_over_test_0() {
     let data = re.unwrap();
     assert_eq!(data, 'b');
 }
-//
+
 // #[test]
 // fn many_test_0() {
 //     let mut state = VecState::from_iter("abc".chars().into_iter());
@@ -192,7 +192,7 @@ fn bind_then_over_test_0() {
 //     let ver = Arc::new((vec!['a']).into_iter().map(|x:char| Arc::new(x)).collect());
 //     assert_eq!(data, ver);
 // }
-//
+
 // #[test]
 // fn many_test_1() {
 //     let mut state = VecState::from_iter("abc".chars().into_iter());
