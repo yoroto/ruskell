@@ -5,6 +5,49 @@ use std::sync::Arc;
 use std::marker::PhantomData;
 
 #[derive(Debug, Clone)]
+pub struct One<T>{
+    input : PhantomData<T>,
+}
+
+impl<T> One <T> where T:Debug+Clone {
+    fn new() -> One<T> {
+        One{input:PhantomData}
+    }
+}
+
+impl<T> Parsec<T, T> for One<T> where T:Debug+Clone {
+    fn parse(&self, state:&mut State<T>)->Status<T>{
+        state.next().ok_or(SimpleError::new(state.pos(), String::from("eof")))
+    }
+}
+
+impl<'a, T> FnOnce<(&'a mut State<T>, )> for One<T> where T:Debug+Clone {
+    type Output = Status<T>;
+    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<T> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T> FnMut<(&'a mut State<T>, )> for One<T> where T:Debug+Clone {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<T> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T> Fn<(&'a mut State<T>, )> for One<T> where T:Debug+Clone {
+    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<T> {
+        let (state, ) = args;
+        self.parse(state)
+    }
+}
+
+impl<T:'static+Debug+Clone> M<T, T> for One<T>{}
+
+pub fn one<T>() -> One<T> where T:Debug+Clone {
+    One::new()
+}
+
+#[derive(Debug, Clone)]
 pub struct Equal<T>{
     element : T,
 }
