@@ -93,25 +93,25 @@ impl Error for SimpleError {
 }
 
 //pub trait Parsec<T:'static+Clone, R:'static+Clone>:Debug where Self:Parsec<T, R>+Clone+'static {
-pub trait Parsec<T, R>:Debug {
+pub trait Parsec<T, R> {
     fn parse(&self, &mut State<T>)->Status<R>;
 }
 // TODO: move Generic Type Param P to bind/then/over function
 // Type Continuation(Result) Then Pass
 pub trait M<T:'static, R:'static>:Parsec<T, R> where Self:Clone+'static, T:Clone, R:Clone {
-    fn bind<P:'static+Clone>(self, binder:Arc<Box<Fn(&mut State<T>, R)->Status<P>>>)->Monad<T, R, P> {
-        Monad::new(Arc::new(self), binder.clone())
+    fn bind<P:'static+Clone>(self, binder:Arc<Box<Fn(&mut State<T>, R)->Status<P>>>)->Arc<Monad<T, R, P>> {
+        Arc::new(Monad::new(Arc::new(self), binder.clone()))
     }
-    fn then<P:'static+Clone>(self, then:Arc<Parsec<T, P>>)->Monad<T, R, P> {
+    fn then<P:'static+Clone>(self, then:Arc<Parsec<T, P>>)->Arc<Monad<T, R, P>> {
         let then = then.clone();
-        Monad::new(Arc::new(self), Arc::new(Box::new(move |state: &mut State<T>, _:R| {
+        Arc::new(Monad::new(Arc::new(self), Arc::new(Box::new(move |state: &mut State<T>, _:R| {
             let then = then.clone();
             then.parse(state)
-        })))
+        }))))
     }
-    fn over<P:'static+Clone>(self, over:Arc<Parsec<T, P>>)->Monad<T, R, R> {
+    fn over<P:'static+Clone>(self, over:Arc<Parsec<T, P>>)->Arc<Monad<T, R, R>> {
         let over = over.clone();
-        Monad::new(Arc::new(self), Arc::new(Box::new(move |state: &mut State<T>, x:R| {
+        Arc::new(Monad::new(Arc::new(self), Arc::new(Box::new(move |state: &mut State<T>, x:R| {
             let over = over.clone();
             let re = over.parse(state);
             if re.is_ok() {
@@ -119,7 +119,7 @@ pub trait M<T:'static, R:'static>:Parsec<T, R> where Self:Clone+'static, T:Clone
             } else {
                 Err(re.err().unwrap())
             }
-        })))
+        }))))
     }
 }
 
@@ -136,33 +136,34 @@ where T:Clone, P:Clone {
     pub fn new(parsec: Arc<Parsec<T, C>>, binder: Arc<Box<Fn(&mut State<T>, C)->Status<P>>>)-> Monad<T, C, P> {
         Monad{parsec:parsec.clone(), binder:binder.clone()}
     }
-    pub fn bind<R:'static>(self, binder:Arc<Box<Fn(&mut State<T>, P)->Status<R>>>)->Monad<T, P, R>
-    where R:Clone {
-        Monad::new(Arc::new(self), binder.clone())
-    }
 
-    pub fn then<R:'static>(self, then:Arc<Parsec<T, R>>)->Monad<T, P, R>
-    where R:Clone {
-        let then = then.clone();
-        Monad::new(Arc::new(self), Arc::new(Box::new(move |state: &mut State<T>, _:P| {
-            let then = then.clone();
-            then.parse(state)
-        })))
-    }
-
-    pub fn over<R:'static>(self, over:Arc<Parsec<T, R>>)->Monad<T, P, P>
-    where R:Clone {
-        let over = over.clone();
-        Monad::new(Arc::new(self), Arc::new(Box::new(move |state: &mut State<T>, x:P| {
-            let over = over.clone();
-            let re = over.parse(state);
-            if re.is_ok() {
-                Ok(x)
-            } else {
-                Err(re.err().unwrap())
-            }
-        })))
-    }
+    // pub fn bind<R:'static>(self, binder:Arc<Box<Fn(&mut State<T>, P)->Status<R>>>)->Arc<Monad<T, P, R>>
+    // where R:Clone {
+    //     Arc::new(Monad::new(Arc::new(self), binder.clone()))
+    // }
+    //
+    // pub fn then<R:'static>(self, then:Arc<Parsec<T, R>>)->Arc<Monad<T, P, R>>
+    // where R:Clone {
+    //     let then = then.clone();
+    //     Arc::new(Monad::new(Arc::new(self), Arc::new(Box::new(move |state: &mut State<T>, _:P| {
+    //         let then = then.clone();
+    //         then.parse(state)
+    //     }))))
+    // }
+    //
+    // pub fn over<R:'static>(self, over:Arc<Parsec<T, R>>)->Arc<Monad<T, P, P>>
+    // where R:Clone {
+    //     let over = over.clone();
+    //     Arc::new(Monad::new(Arc::new(self), Arc::new(Box::new(move |state: &mut State<T>, x:P| {
+    //         let over = over.clone();
+    //         let re = over.parse(state);
+    //         if re.is_ok() {
+    //             Ok(x)
+    //         } else {
+    //             Err(re.err().unwrap())
+    //         }
+    //     }))))
+    // }
 }
 
 impl<T, C, P> Parsec<T, P> for Monad<T, C, P>
@@ -220,8 +221,11 @@ impl<T, C, P> Debug for Monad<T, C, P> where T:Clone, P:Clone{
     }
 }
 
-pub fn monad<T:'static, R:'static>(parsec:Arc<Parsec<T, R>>)->Monad<T, R, R> where T:Clone, R:Clone {
-    Monad::new(parsec, Arc::new(Box::new(|_:&mut State<T>, re:R| Ok(re))))
+impl<T:'static, C:'static, P:'static> M<T, P> for Monad<T, C, P>
+where T:Clone, C:Clone, P:Clone{}
+
+pub fn monad<T:'static, R:'static>(parsec:Arc<Parsec<T, R>>)->Arc<Monad<T, R, R>> where T:Clone, R:Clone {
+    Arc::new(Monad::new(parsec, Arc::new(Box::new(|_:&mut State<T>, re:R| Ok(re)))))
 }
 
 pub mod atom;

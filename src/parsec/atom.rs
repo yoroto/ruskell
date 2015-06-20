@@ -52,8 +52,8 @@ impl<'a, T> Fn<(&'a mut State<T>, )> for One<T> where T:Eq+Display+Debug+Clone {
 
 impl<T:'static+Eq+Display+Debug+Clone> M<T, T> for One<T>{}
 
-pub fn one<T>(element:T) -> One<T> where T:Eq+Display+Debug+Clone {
-    One::new(element)
+pub fn one<T>(element:T) -> Arc<One<T>> where T:Eq+Display+Debug+Clone {
+    Arc::new(One::new(element))
 }
 
 pub struct Eof<T>{
@@ -101,7 +101,7 @@ impl<'a, S, T> Fn<(&'a mut S, )> for Eof<T> where T:Clone+Display, S:State<T> {
 
 impl<T> Clone for Eof<T> where T:Clone {
     fn clone(&self)->Self {
-        eof::<T>()
+        Eof::new()
     }
 
     fn clone_from(&mut self, _: &Self) {
@@ -116,8 +116,8 @@ impl<T> Debug for Eof<T> where T:Clone{
 
 impl<T:'static+Debug+Display+Clone> M<T, ()> for Eof<T>{}
 
-pub fn eof<T>() -> Eof<T> {
-    Eof::new()
+pub fn eof<T>() -> Arc<Eof<T>> {
+    Arc::new(Eof::new())
 }
 
 #[derive(Debug, Clone)]
@@ -173,9 +173,9 @@ impl<'a, T> Fn<(&'a mut State<T>, )> for OneOf<T> where T:Eq+Clone+Display+Debug
 
 impl<T:'static+Eq+Debug+Display+Clone> M<T, T> for OneOf<T>{}
 
-pub fn one_of<T:'static+Eq+Debug+Display>(elements:&Vec<T>)->OneOf<T>
+pub fn one_of<T:'static+Eq+Debug+Display>(elements:&Vec<T>)->Arc<OneOf<T>>
         where T:Eq+Display+Clone+Debug {
-    OneOf::new(&elements)
+    Arc::new(OneOf::new(&elements))
 }
 
 #[derive(Debug, Clone)]
@@ -231,9 +231,9 @@ impl<'a, T> Fn<(&'a mut State<T>, )> for NoneOf<T> where T:Eq+Clone+Display+Debu
 
 impl<T:'static+Eq+Debug+Display+Clone> M<T, T> for NoneOf<T>{}
 
-pub fn none_of<T:'static+Eq+Debug+Display>(elements:&Vec<T>)->NoneOf<T>
+pub fn none_of<T:'static+Eq+Debug+Display>(elements:&Vec<T>)->Arc<NoneOf<T>>
         where T:Eq+Display+Clone+Debug {
-    NoneOf::new(&elements)
+    Arc::new(NoneOf::new(&elements))
 }
 
 pub struct Pack<I, T>{
@@ -291,8 +291,8 @@ impl<I, T> Debug for Pack<I, T> where T:Clone+Debug {
 
 impl<I:'static+Clone, T:'static+Debug+Clone> M<I, T> for Pack<I, T>{}
 
-pub fn pack<I, T>(element:T) -> Pack<I, T> where T:Clone+Debug {
-    Pack::new(element)
+pub fn pack<I, T>(element:T) -> Arc<Pack<I, T>> where T:Clone+Debug {
+    Arc::new(Pack::new(element))
 }
 
 pub struct Fail<I>{
@@ -351,6 +351,6 @@ impl<I> Debug for Fail<I> where I:Clone {
 
 impl<T:'static+Clone> M<T, ()> for Fail<T>{}
 
-pub fn fail<I>(message:String) -> Fail<I> where I: Clone {
-    Fail::new(message)
+pub fn fail<I>(message:String) -> Arc<Fail<I>> where I: Clone {
+    Arc::new(Fail::new(message))
 }
