@@ -92,10 +92,10 @@ impl Error for SimpleError {
     }
 }
 
+//pub trait Parsec<T:'static+Clone, R:'static+Clone>:Debug where Self:Parsec<T, R>+Clone+'static {
 pub trait Parsec<T, R>:Debug {
     fn parse(&self, &mut State<T>)->Status<R>;
 }
-
 // TODO: move Generic Type Param P to bind/then/over function
 // Type Continuation(Result) Then Pass
 pub trait M<T:'static+Clone, R:'static+Clone> where Self:Parsec<T, R>+Clone+'static {
