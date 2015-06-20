@@ -5,17 +5,17 @@ use std::sync::Arc;
 use std::marker::PhantomData;
 
 #[derive(Debug, Clone)]
-pub struct One<T>{
+pub struct Equal<T>{
     element : T,
 }
 
-impl<T> One<T> where T:Eq+Display+Debug+Clone {
-    fn new(element:T) -> One<T> {
-        One{element:element}
+impl<T> Equal<T> where T:Eq+Display+Debug+Clone {
+    fn new(element:T) -> Equal<T> {
+        Equal{element:element}
     }
 }
 
-impl<T> Parsec<T, T> for One<T> where T:Eq+Display+Debug+Clone {
+impl<T> Parsec<T, T> for Equal<T> where T:Eq+Display+Debug+Clone {
     fn parse(&self, state:&mut State<T>)->Status<T>{
         let ref value = self.element;
         let val = state.next_by(&|val:&T|val.eq(value));
@@ -30,30 +30,30 @@ impl<T> Parsec<T, T> for One<T> where T:Eq+Display+Debug+Clone {
     }
 }
 
-impl<'a, T> FnOnce<(&'a mut State<T>, )> for One<T> where T:Eq+Display+Debug+Clone {
+impl<'a, T> FnOnce<(&'a mut State<T>, )> for Equal<T> where T:Eq+Display+Debug+Clone {
     type Output = Status<T>;
     extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<T> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T> FnMut<(&'a mut State<T>, )> for One<T> where T:Eq+Display+Debug+Clone {
+impl<'a, T> FnMut<(&'a mut State<T>, )> for Equal<T> where T:Eq+Display+Debug+Clone {
     extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<T> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T> Fn<(&'a mut State<T>, )> for One<T> where T:Eq+Display+Debug+Clone {
+impl<'a, T> Fn<(&'a mut State<T>, )> for Equal<T> where T:Eq+Display+Debug+Clone {
     extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<T> {
         let (state, ) = args;
         self.parse(state)
     }
 }
 
-impl<T:'static+Eq+Display+Debug+Clone> M<T, T> for One<T>{}
+impl<T:'static+Eq+Display+Debug+Clone> M<T, T> for Equal<T>{}
 
-pub fn one<T>(element:T) -> One<T> where T:Eq+Display+Debug+Clone {
-    One::new(element)
+pub fn eq<T>(element:T) -> Equal<T> where T:Eq+Display+Debug+Clone {
+    Equal::new(element)
 }
 
 pub struct Eof<T>{

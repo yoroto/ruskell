@@ -2,7 +2,7 @@
 #[macro_use]
 extern crate ruskell;
 use ruskell::parsec::{VecState, State, Status, Parsec, Error, monad, M};
-use ruskell::parsec::atom::{one, eof, one_of, none_of};
+use ruskell::parsec::atom::{eq, eof, one_of, none_of};
 use ruskell::parsec::combinator::{either, many, many1, between};
 use std::sync::Arc;
 use std::iter::FromIterator;
@@ -21,19 +21,19 @@ fn state_works() {
 }
 
 #[test]
-fn one_test_0() {
+fn eq_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = one('a');
+    let a = eq('a');
     let re = a(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
     assert_eq!(data, 'a');
-    let a = one('b');
+    let a = eq('b');
     let re = a(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
     assert_eq!(data, 'b');
-    let a = one('c');
+    let a = eq('c');
     let re = a(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
@@ -41,19 +41,19 @@ fn one_test_0() {
 }
 
 #[test]
-fn one_eof_test_0() {
+fn eq_eof_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = &mut one('a');
+    let a = &mut eq('a');
     let re = a(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
     assert_eq!(data, 'a');
-    let a = &mut one('b');
+    let a = &mut eq('b');
     let re = a(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
     assert_eq!(data, 'b');
-    let a = &mut one('c');
+    let a = &mut eq('c');
     let re = a(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
@@ -63,7 +63,7 @@ fn one_eof_test_0() {
 }
 
 #[test]
-fn one_of_test_0() {
+fn eq_of_test_0() {
     let es = "abc".chars().into_iter().collect::<Vec<char>>();
     let mut state = VecState::from_iter("abc".chars().into_iter());
     let p = one_of(&es);
@@ -74,7 +74,7 @@ fn one_of_test_0() {
 }
 
 #[test]
-fn none_of_test_0() {
+fn neq_of_test_0() {
     let es = "abc".chars().into_iter().collect::<Vec<char>>();
     let mut state = VecState::from_iter("abc".chars().into_iter());
     let p = none_of(&es);
@@ -83,7 +83,7 @@ fn none_of_test_0() {
 }
 
 #[test]
-fn none_of_test_1() {
+fn neq_of_test_1() {
     let es = "bcdef".chars().into_iter().collect::<Vec<char>>();
     let mut state = VecState::from_iter("abc".chars().into_iter());
     let p = none_of(&es);
@@ -96,8 +96,8 @@ fn none_of_test_1() {
 #[test]
 fn either_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = Arc::new(one('a'));
-    let b = Arc::new(one('b'));
+    let a = Arc::new(eq('a'));
+    let b = Arc::new(eq('b'));
     let e = &mut either(b, a);
     let re = e(&mut state);
     assert!(re.is_ok());
@@ -108,8 +108,8 @@ fn either_test_0() {
 #[test]
 fn either_test_1() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = Arc::new(one('a'));
-    let b = Arc::new(one('b'));
+    let a = Arc::new(eq('a'));
+    let b = Arc::new(eq('b'));
     let e = &mut either(a, b);
     let re = e(&mut state);
     assert!(re.is_ok());
@@ -120,9 +120,9 @@ fn either_test_1() {
 #[test]
 fn either_test_2() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = Arc::new(one('a'));
-    let b = Arc::new(one('b'));
-    let c = Arc::new(one('c'));
+    let a = Arc::new(eq('a'));
+    let b = Arc::new(eq('b'));
+    let c = Arc::new(eq('c'));
     let e = either(b, c).or(a);
     let re = e(&mut state);
     assert!(re.is_ok());
@@ -133,9 +133,9 @@ fn either_test_2() {
 #[test]
 fn monad_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = one('a');
+    let a = eq('a');
     let exp = monad(Arc::new(a)).bind(Arc::new(Box::new(move |state:&mut State<char>, x:char|->Status<Vec<char>>{
-            one('b').parse(state).map(|y:char| -> Vec<char>{
+            eq('b').parse(state).map(|y:char| -> Vec<char>{
                 let mut res = Vec::new();
                 res.push(x);
                 res.push(y);
@@ -143,7 +143,7 @@ fn monad_test_0() {
             })
         }))).bind(
             Arc::new(Box::new(move |state: &mut State<char>, v:Vec<char>|->Status<Vec<char>>{
-                one('c').parse(state).map(|x:char| -> Vec<char> {
+                eq('c').parse(state).map(|x:char| -> Vec<char> {
                     let mut res = Vec::new();
                     res.push_all(&v);
                     res.push(x);
@@ -160,9 +160,9 @@ fn monad_test_0() {
 #[test]
 fn then_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = one('a');
-    let b = one('b');
-    let c = one('c');
+    let a = eq('a');
+    let b = eq('b');
+    let c = eq('c');
     let exp = monad(Arc::new(a)).over(Arc::new(b)).then(Arc::new(c));
     let re = exp(&mut state);
     assert!(re.is_ok());
@@ -173,8 +173,8 @@ fn then_test_0() {
 #[test]
 fn bind_then_over_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = one('a');
-    let exp = monad(Arc::new(a)).then(Arc::new(one('b'))).over(Arc::new(one('c'))).over(Arc::new(eof()));
+    let a = eq('a');
+    let exp = monad(Arc::new(a)).then(Arc::new(eq('b'))).over(Arc::new(eq('c'))).over(Arc::new(eof()));
     let re = exp(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
@@ -184,9 +184,9 @@ fn bind_then_over_test_0() {
 #[test]
 fn m_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = one('a');
-    let b = one('b');
-    let c = one('c');
+    let a = eq('a');
+    let b = eq('b');
+    let c = eq('c');
     let exp = a.over(Arc::new(b)).then(Arc::new(c));
     let re = exp(&mut state);
     assert!(re.is_ok());
@@ -197,8 +197,8 @@ fn m_test_0() {
 #[test]
 fn m_test_1() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = one('a');
-    let exp = a.then(Arc::new(one('b'))).over(Arc::new(one('c'))).over(Arc::new(eof()));
+    let a = eq('a');
+    let exp = a.then(Arc::new(eq('b'))).over(Arc::new(eq('c'))).over(Arc::new(eof()));
     let re = exp(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
@@ -208,7 +208,7 @@ fn m_test_1() {
 #[test]
 fn many_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = Arc::new(one('a'));
+    let a = Arc::new(eq('a'));
     let re = many(a).parse(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
@@ -219,7 +219,7 @@ fn many_test_0() {
 #[test]
 fn many_test_1() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = Arc::new(one('b'));
+    let a = Arc::new(eq('b'));
     let re = many(a).parse(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
@@ -230,9 +230,9 @@ fn many_test_1() {
 #[test]
 fn many_test_2() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = Arc::new(one('a'));
-    let b = Arc::new(one('b'));
-    let c = Arc::new(one('c'));
+    let a = Arc::new(eq('a'));
+    let b = Arc::new(eq('b'));
+    let c = Arc::new(eq('c'));
 
     let re = many(Arc::new(either(a, b).or(c))).parse(&mut state);
     assert!(re.is_ok());
@@ -244,9 +244,9 @@ fn many_test_2() {
 #[test]
 fn many1_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = Arc::new(one('a'));
-    let b = Arc::new(one('b'));
-    let c = Arc::new(one('c'));
+    let a = Arc::new(eq('a'));
+    let b = Arc::new(eq('b'));
+    let c = Arc::new(eq('c'));
 
     let re = many1(Arc::new(either(a, b).or(c)))(&mut state);
     assert!(re.is_ok());
@@ -258,9 +258,9 @@ fn many1_test_0() {
 #[test]
 fn many1_test_1() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = Arc::new(one('b'));
-    let b = Arc::new(one('b'));
-    let c = Arc::new(one('c'));
+    let a = Arc::new(eq('b'));
+    let b = Arc::new(eq('b'));
+    let c = Arc::new(eq('c'));
 
     let re = many1(Arc::new(either(a, b).or(c)))(&mut state);
     assert!(re.is_err());
@@ -269,8 +269,8 @@ fn many1_test_1() {
 #[test]
 fn many1_test_2() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = Arc::new(one('a'));
-    let b = Arc::new(one('b'));
+    let a = Arc::new(eq('a'));
+    let b = Arc::new(eq('b'));
 
     let re = many1(Arc::new(either(a, b)))(&mut state);
     assert!(re.is_ok());
@@ -282,9 +282,9 @@ fn many1_test_2() {
 #[test]
 fn between_test_0() {
     let mut state = VecState::from_iter("\"xxxxxxxx\".".chars());
-    let quote = Arc::new(one('\"'));
+    let quote = Arc::new(eq('\"'));
 
-    let content = Arc::new(many(Arc::new(one('x'))));
+    let content = Arc::new(many(Arc::new(eq('x'))));
     let re = between(quote.clone(), content, quote)(&mut state);
     if re.is_err() {
         let msg = format!("{}", re.unwrap_err().message());
