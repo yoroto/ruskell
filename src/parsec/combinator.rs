@@ -63,8 +63,8 @@ impl<T, R> Debug for Try<T, R> where T:Clone{
 
 impl<T:'static+Clone, R:'static+Clone> M<T, R> for Try<T, R>{}
 
-fn try<T, R>(p:Arc<Parsec<T, R>>) -> Arc<Try<T, R>> where T:Clone {
-    Arc::new(Try::new(p))
+fn try<T, R>(p:Arc<Parsec<T, R>>) -> Try<T, R> where T:Clone {
+    Try::new(p)
 }
 
 pub struct Either<T, R>{
@@ -139,9 +139,8 @@ impl<T, R> Debug for Either<T, R> where T:Clone {
 
 impl<T:'static+Clone, R:'static+Clone> M<T, R> for Either<T, R>{}
 
-pub fn either<T:'static, R:'static>(x: Arc<Parsec<T, R>>, y:Arc<Parsec<T, R>>)->
-            Arc<Either<T, R>> where T:Clone{
-        Arc::new(Either::new(x, y))
+pub fn either<T:'static, R:'static>(x: Arc<Parsec<T, R>>, y:Arc<Parsec<T, R>>)->Either<T, R> where T:Clone{
+        Either::new(x, y)
 }
 
 pub struct Many<T, R> {
@@ -156,8 +155,8 @@ impl<T, R> Many<T, R> where T:Clone, R:Clone+Debug {
 
 impl<T:'static, R:'static> Parsec<T, Vec<R>> for Many<T, R> where T:Clone, R:Clone+Debug {
     fn parse(&self, state:&mut State<T>)->Status<Vec<R>> {
-        let left = many1(try(self.parsec.clone()));
-        either(left, pack(Vec::new())).parse(state)
+        let left = Arc::new(many1(Arc::new(try(self.parsec.clone()))));
+        either(left, Arc::new(pack(Vec::new()))).parse(state)
     }
 }
 
@@ -200,9 +199,8 @@ impl<T, R> Debug for Many<T, R> where T:Clone, R:Clone+Debug{
 
 impl<T:'static+Clone, R:'static+Clone+Debug> M<T, Vec<R>> for Many<T, R>{}
 
-pub fn many<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Arc<Many<T, R>>
-where T:Clone, R:Clone+Debug {
-    Arc::new(Many::new(p))
+pub fn many<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many<T, R> where T:Clone, R:Clone+Debug {
+    Many::new(p)
 }
 
 pub struct Many1<T, R> {
@@ -218,7 +216,8 @@ impl<T, R> Many1<T, R> where T:Clone, R:Clone+Debug {
 impl<T:'static, R:'static> Parsec<T, Vec<R>> for Many1<T, R> where T:Clone, R:Clone+Debug {
     fn parse(&self, state:&mut State<T>)->Status<Vec<R>> {
         let parsec = self.parsec.clone();
-        Monad::new(parsec.clone(), Arc::new(Box::new(move |state: &mut State<T>, x:R|->Status<Vec<R>>{
+        monad(parsec.clone())
+        .bind(Arc::new(Box::new(move |state: &mut State<T>, x:R|->Status<Vec<R>>{
             let mut rev = Vec::new();
             let tail = many(parsec.clone()).parse(state);
             let data = tail.unwrap();
@@ -268,17 +267,11 @@ impl<'a, T:'static, R:'static> Fn<(&'a mut State<T>, )> for Many1<T, R> where T:
 
 impl<T:'static+Clone, R:'static+Clone+Debug> M<T, Vec<R>> for Many1<T, R>{}
 
-pub fn many1<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Arc<Many1<T, R>>
-where T:Clone, R:Clone+Debug {
-    Arc::new(Many1::new(p))
+pub fn many1<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many1<T, R> where T:Clone, R:Clone+Debug {
+    Many1::new(p)
 }
 
-pub fn between<T:'static, B:'static, P:'static, E:'static, Begin>
-        (begin:Arc<Begin>, parsec:Arc<Parsec<T, P>>, end:Arc<Parsec<T, E>>)
-        ->Arc<Monad<T, P, P>>
-where T:Clone, P:Clone, B:Clone, E:Clone, Begin:M<T, B>{
-    let begin = begin.clone();
-    let parsec = parsec.clone();
-    let end = end.clone();
-    begin.then(parsec).clone().over(end)
+pub fn between<T:'static, B:'static, P:'static, E:'static>(begin:Arc<Parsec<T, B>>, parsec:Arc<Parsec<T, P>>, end:Arc<Parsec<T, E>>)
+        ->Monad<T, P, P> where T:Clone, P:Clone, B:Clone, E:Clone {
+    monad(begin.clone()).then(parsec.clone()).over(end.clone())
 }
