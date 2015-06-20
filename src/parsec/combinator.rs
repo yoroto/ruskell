@@ -1,4 +1,4 @@
-use parsec::{State, Parsec, Status, monad};
+use parsec::{State, Parsec, Status, Monad, monad};
 use parsec::atom::{pack};
 use std::sync::Arc;
 use std::fmt::{Debug, Formatter};
@@ -261,4 +261,9 @@ impl<'a, T:'static, R:'static> Fn<(&'a mut State<T>, )> for Many1<T, R> where T:
 
 pub fn many1<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many1<T, R> where T:Clone, R:Clone+Debug {
     Many1::new(p)
+}
+
+pub fn between<T:'static, B:'static, P:'static, E:'static>(begin:Arc<Parsec<T, B>>, parsec:Arc<Parsec<T, P>>, end:Arc<Parsec<T, E>>)
+        ->Monad<T, P, P> where T:Clone, P:Clone, B:Clone, E:Clone {
+    monad(begin.clone()).then(parsec.clone()).over(end.clone())
 }
