@@ -98,7 +98,7 @@ pub trait Parsec<T, R>:Debug {
 }
 // TODO: move Generic Type Param P to bind/then/over function
 // Type Continuation(Result) Then Pass
-pub trait M<T:'static+Clone, R:'static+Clone> where Self:Parsec<T, R>+Clone+'static {
+pub trait M<T:'static, R:'static>:Parsec<T, R> where Self:Clone+'static, T:Clone, R:Clone {
     fn bind<P:'static+Clone>(self, binder:Arc<Box<Fn(&mut State<T>, R)->Status<P>>>)->Monad<T, R, P> {
         Monad::new(Arc::new(self), binder.clone())
     }

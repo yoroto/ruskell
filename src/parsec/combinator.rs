@@ -1,4 +1,4 @@
-use parsec::{State, Parsec, Status, Monad, monad};
+use parsec::{State, Parsec, Status, Monad, monad, M};
 use parsec::atom::{pack};
 use std::sync::Arc;
 use std::fmt::{Debug, Formatter};
@@ -60,6 +60,8 @@ impl<T, R> Debug for Try<T, R> where T:Clone{
         "<try parsec>".fmt(formatter)
     }
 }
+
+impl<T:'static+Clone, R:'static+Clone> M<T, R> for Try<T, R>{}
 
 fn try<T, R>(p:Arc<Parsec<T, R>>) -> Try<T, R> where T:Clone {
     Try::new(p)
@@ -135,6 +137,8 @@ impl<T, R> Debug for Either<T, R> where T:Clone {
     }
 }
 
+impl<T:'static+Clone, R:'static+Clone> M<T, R> for Either<T, R>{}
+
 pub fn either<T:'static, R:'static>(x: Arc<Parsec<T, R>>, y:Arc<Parsec<T, R>>)->Either<T, R> where T:Clone{
         Either::new(x, y)
 }
@@ -192,6 +196,8 @@ impl<T, R> Debug for Many<T, R> where T:Clone, R:Clone+Debug{
         "<many parsec>".fmt(formatter)
     }
 }
+
+impl<T:'static+Clone, R:'static+Clone+Debug> M<T, Vec<R>> for Many<T, R>{}
 
 pub fn many<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many<T, R> where T:Clone, R:Clone+Debug {
     Many::new(p)
@@ -258,6 +264,8 @@ impl<'a, T:'static, R:'static> Fn<(&'a mut State<T>, )> for Many1<T, R> where T:
         self.parse(state)
     }
 }
+
+impl<T:'static+Clone, R:'static+Clone+Debug> M<T, Vec<R>> for Many1<T, R>{}
 
 pub fn many1<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many1<T, R> where T:Clone, R:Clone+Debug {
     Many1::new(p)

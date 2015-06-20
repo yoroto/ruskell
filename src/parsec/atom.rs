@@ -1,4 +1,4 @@
-use parsec::{State, SimpleError, Error, Parsec, Status};
+use parsec::{State, SimpleError, Error, Parsec, Status, M};
 use std::fmt::{Debug, Display, Formatter};
 use std::fmt;
 use std::sync::Arc;
@@ -49,6 +49,8 @@ impl<'a, T> Fn<(&'a mut State<T>, )> for One<T> where T:Eq+Display+Debug+Clone {
         self.parse(state)
     }
 }
+
+impl<T:'static+Eq+Display+Debug+Clone> M<T, T> for One<T>{}
 
 pub fn one<T>(element:T) -> One<T> where T:Eq+Display+Debug+Clone {
     One::new(element)
@@ -112,6 +114,7 @@ impl<T> Debug for Eof<T> where T:Clone{
     }
 }
 
+impl<T:'static+Debug+Display+Clone> M<T, ()> for Eof<T>{}
 
 pub fn eof<T>() -> Eof<T> {
     Eof::new()
@@ -168,6 +171,8 @@ impl<'a, T> Fn<(&'a mut State<T>, )> for OneOf<T> where T:Eq+Clone+Display+Debug
     }
 }
 
+impl<T:'static+Eq+Debug+Display+Clone> M<T, T> for OneOf<T>{}
+
 pub fn one_of<T:'static+Eq+Debug+Display>(elements:&Vec<T>)->OneOf<T>
         where T:Eq+Display+Clone+Debug {
     OneOf::new(&elements)
@@ -223,6 +228,8 @@ impl<'a, T> Fn<(&'a mut State<T>, )> for NoneOf<T> where T:Eq+Clone+Display+Debu
         self.parse(state)
     }
 }
+
+impl<T:'static+Eq+Debug+Display+Clone> M<T, T> for NoneOf<T>{}
 
 pub fn none_of<T:'static+Eq+Debug+Display>(elements:&Vec<T>)->NoneOf<T>
         where T:Eq+Display+Clone+Debug {
@@ -282,6 +289,8 @@ impl<I, T> Debug for Pack<I, T> where T:Clone+Debug {
     }
 }
 
+impl<I:'static+Clone, T:'static+Debug+Clone> M<I, T> for Pack<I, T>{}
+
 pub fn pack<I, T>(element:T) -> Pack<I, T> where T:Clone+Debug {
     Pack::new(element)
 }
@@ -339,6 +348,8 @@ impl<I> Debug for Fail<I> where I:Clone {
         write!(formatter, "<fail parsec: {:?}>", self.message)
     }
 }
+
+impl<T:'static+Clone> M<T, ()> for Fail<T>{}
 
 pub fn fail<I>(message:String) -> Fail<I> where I: Clone {
     Fail::new(message)

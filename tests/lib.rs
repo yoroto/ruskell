@@ -1,7 +1,7 @@
 #![feature(collections)]
 #[macro_use]
 extern crate ruskell;
-use ruskell::parsec::{VecState, State, Status, Parsec, Error, monad};
+use ruskell::parsec::{VecState, State, Status, Parsec, Error, monad, M};
 use ruskell::parsec::atom::{one, eof, one_of, none_of};
 use ruskell::parsec::combinator::{either, many, many1, between};
 use std::sync::Arc;
@@ -170,12 +170,35 @@ fn then_test_0() {
     assert_eq!(data, 'c');
 }
 
-
 #[test]
 fn bind_then_over_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
     let a = one('a');
     let exp = monad(Arc::new(a)).then(Arc::new(one('b'))).over(Arc::new(one('c'))).over(Arc::new(eof()));
+    let re = exp(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, 'b');
+}
+
+#[test]
+fn m_test_0() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one('a');
+    let b = one('b');
+    let c = one('c');
+    let exp = a.over(Arc::new(b)).then(Arc::new(c));
+    let re = exp(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, 'c');
+}
+
+#[test]
+fn m_test_1() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = one('a');
+    let exp = a.then(Arc::new(one('b'))).over(Arc::new(one('c'))).over(Arc::new(eof()));
     let re = exp(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
