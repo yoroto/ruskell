@@ -92,8 +92,35 @@ impl Error for SimpleError {
     }
 }
 
-pub trait Parsec<T, R> {
+pub trait Parsec<T, R>:Debug {
     fn parse(&self, &mut State<T>)->Status<R>;
+}
+
+// TODO: move Generic Type Param P to bind/then/over function
+// Type Continuation(Result) Then Pass
+pub trait M<T:'static+Clone, R:'static+Clone> where Self:Parsec<T, R>+Clone+'static {
+    fn bind<P:'static+Clone>(self, binder:Arc<Box<Fn(&mut State<T>, R)->Status<P>>>)->Monad<T, R, P> {
+        Monad::new(Arc::new(self), binder.clone())
+    }
+    fn then<P:'static+Clone>(self, then:Arc<Parsec<T, P>>)->Monad<T, R, P> {
+        let then = then.clone();
+        Monad::new(Arc::new(self), Arc::new(Box::new(move |state: &mut State<T>, _:R| {
+            let then = then.clone();
+            then.parse(state)
+        })))
+    }
+    fn over<P:'static+Clone>(self, over:Arc<Parsec<T, P>>)->Monad<T, R, R> {
+        let over = over.clone();
+        Monad::new(Arc::new(self), Arc::new(Box::new(move |state: &mut State<T>, x:R| {
+            let over = over.clone();
+            let re = over.parse(state);
+            if re.is_ok() {
+                Ok(x)
+            } else {
+                Err(re.err().unwrap())
+            }
+        })))
+    }
 }
 
 pub type Status<T> = Result<T, SimpleError>;
