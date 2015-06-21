@@ -274,6 +274,7 @@ pub fn many1<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many1<T, R> where T:Clo
 pub fn between<T:'static, B:'static, P:'static, E:'static>
         (begin:Arc<Parsec<T, B>>, parsec:Arc<Parsec<T, P>>, end:Arc<Parsec<T, E>>)
         ->Monad<T, P, P> where T:Clone, P:Clone, B:Clone, E:Clone {
+    // TODO: A fake binder between begin and parsec then, someone manybe remove it.
     monad(begin).then(parsec).over(end)
 }
 
