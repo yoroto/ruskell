@@ -136,32 +136,6 @@ where T:Clone, P:Clone {
     pub fn new(parsec: Arc<Parsec<T, C>>, binder: Arc<Box<Fn(&mut State<T>, C)->Status<P>>>)-> Monad<T, C, P> {
         Monad{parsec:parsec.clone(), binder:binder.clone()}
     }
-    // pub fn bind<R:'static>(self, binder:Arc<Box<Fn(&mut State<T>, P)->Status<R>>>)->Monad<T, P, R>
-    // where R:Clone {
-    //     Monad::new(Arc::new(self), binder.clone())
-    // }
-    // pub fn then<R:'static>(self, then:Arc<Parsec<T, R>>)->Monad<T, P, R>
-    // where R:Clone {
-    //     let then = then.clone();
-    //     Monad::new(Arc::new(self), Arc::new(Box::new(move |state: &mut State<T>, _:P| {
-    //         let then = then.clone();
-    //         then.parse(state)
-    //     })))
-    // }
-    //
-    // pub fn over<R:'static>(self, over:Arc<Parsec<T, R>>)->Monad<T, P, P>
-    // where R:Clone {
-    //     let over = over.clone();
-    //     Monad::new(Arc::new(self), Arc::new(Box::new(move |state: &mut State<T>, x:P| {
-    //         let over = over.clone();
-    //         let re = over.parse(state);
-    //         if re.is_ok() {
-    //             Ok(x)
-    //         } else {
-    //             Err(re.err().unwrap())
-    //         }
-    //     })))
-    // }
 }
 
 impl<T, C, P> Parsec<T, P> for Monad<T, C, P>
