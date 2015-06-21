@@ -296,3 +296,8 @@ where T:Clone, R:Clone+Debug, Tail:Clone{
     // TODO: A fake binder between p and tail, someone manybe remove it.
     monad(Arc::new(many1(p))).over(tail)
 }
+
+pub fn sep_by<T, Sep, R>(sep:Arc<Parsec<T, Sep>>, parsec:Arc<Parsec<T, R>>)->Monad<T, Vec<R>>
+where T:Clone, R:Clone+Debug, Sep:Clone{
+    either(Arc::new(sep_by1(sep, parsec)), pack(Vec::new()))
+}
