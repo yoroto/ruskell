@@ -297,7 +297,26 @@ where T:Clone, R:Clone+Debug, Tail:Clone{
     monad(Arc::new(many1(p))).over(tail)
 }
 
-pub fn sep_by<T, Sep, R>(sep:Arc<Parsec<T, Sep>>, parsec:Arc<Parsec<T, R>>)->Monad<T, Vec<R>>
+pub fn sep_by<T:'static, Sep:'static, R:'static>(sep:Arc<Parsec<T, Sep>>, parsec:Arc<Parsec<T, R>>)->Either<T, Vec<R>>
 where T:Clone, R:Clone+Debug, Sep:Clone{
-    either(Arc::new(sep_by1(sep, parsec)), pack(Vec::new()))
+    let s = Arc::new(try(sep));
+    let p = Arc::new(try(parsec));
+    either(Arc::new(sep_by1(s, p)), Arc::new(pack(Vec::new())))
+}
+
+pub fn sep_by1<T:'static, Sep:'static, R:'static>(sep:Arc<Parsec<T, Sep>>, parsec:Arc<Parsec<T, R>>)
+    ->Monad<T, R, Vec<R>>
+where T:Clone, R:Clone+Debug, Sep:Clone{
+    let sep = sep.clone();
+    let parsec = parsec.clone();
+    monad(parsec).bind(Arc::new(Box::new(|state:&mut State<T>, x:R|->Status<Vec<R>>{
+        let sep = sep.clone();
+        let parsec = parsec.clone();
+        let mut rev = Vec::new();
+        let tail = sep_by(sep.clone(), parsec.clone()).parse(state);
+        let data = tail.unwrap();
+        rev.push(x);
+        rev.push_all(&data);
+        Ok(rev)
+    })))
 }
