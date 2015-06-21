@@ -338,47 +338,48 @@ pub fn pack<I, T>(element:T) -> Pack<I, T> where T:Clone+Debug {
     Pack::new(element)
 }
 
-pub struct Fail<I>{
+pub struct Fail<T, R>{
     message:Arc<String>,
-    input_type: PhantomData<I>,
+    input_type: PhantomData<T>,
+    output_type: PhantomData<R>,
 }
 
-impl<I> Fail<I> where I: Clone {
-    fn new(message:String) -> Fail<I> {
+impl<T, R> Fail<T, R> where T: Clone, R:Clone {
+    fn new(message:String) -> Fail<T, R> {
         let msg = Arc::new(message);
-        Fail{message:msg, input_type:PhantomData}
+        Fail{message:msg, input_type:PhantomData, output_type:PhantomData}
     }
 }
 
-impl<I> Parsec<I, ()> for Fail<I> where I: Clone {
-    fn parse(&self, state:&mut State<I>)->Status<()>{
+impl<T, R> Parsec<T, R> for Fail<T, R> where T:Clone, R: Clone {
+    fn parse(&self, state:&mut State<T>)->Status<R>{
         Err(SimpleError::new(state.pos(), String::from(self.message.as_str())))
     }
 }
 
-impl<'a, I> FnOnce<(&'a mut State<I>, )> for Fail<I> where I: Clone {
-    type Output = Status<()>;
-    extern "rust-call" fn call_once(self, _: (&'a mut State<I>, )) -> Status<()> {
+impl<'a, T, R> FnOnce<(&'a mut State<T>, )> for Fail<T, R> where T:Clone, R:Clone {
+    type Output = Status<R>;
+    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<R> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, I> FnMut<(&'a mut State<I>, )> for Fail<I> where I: Clone {
-    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<I>, )) -> Status<()> {
+impl<'a, T, R> FnMut<(&'a mut State<T>, )> for Fail<T, R> where T:Clone, R:Clone {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<R> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, I> Fn<(&'a mut State<I>, )> for Fail<I> where I: Clone {
-    extern "rust-call" fn call(&self, args: (&'a mut State<I>, )) -> Status<()> {
+impl<'a, T, R> Fn<(&'a mut State<T>, )> for Fail<T, R> where T:Clone, R:Clone {
+    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<R> {
         let (state, ) = args;
         self.parse(state)
     }
 }
 
-impl<I> Clone for Fail<I>{
+impl<T, R> Clone for Fail<T, R>{
     fn clone(&self)->Self {
-        Fail{message:self.message.clone(), input_type:PhantomData}
+        Fail{message:self.message.clone(), input_type:PhantomData, output_type:PhantomData}
     }
 
     fn clone_from(&mut self, source: &Self) {
@@ -386,14 +387,14 @@ impl<I> Clone for Fail<I>{
     }
 }
 
-impl<I> Debug for Fail<I> where I:Clone {
+impl<T, R> Debug for Fail<T, R> where T:Clone, R:Clone {
     fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
         write!(formatter, "<fail parsec: {:?}>", self.message)
     }
 }
 
-impl<T:'static+Clone> M<T, ()> for Fail<T>{}
+impl<T:'static, R:'static> M<T, R> for Fail<T, R> where T:Clone, R:Clone{}
 
-pub fn fail<I>(message:String) -> Fail<I> where I: Clone {
+pub fn fail<T, R>(message:String) -> Fail<T, R> where T:Clone, R:Clone {
     Fail::new(message)
 }

@@ -1,4 +1,4 @@
-#![feature(collections)]
+#![feature(vec_push_all)]
 #[macro_use]
 extern crate ruskell;
 use ruskell::parsec::{VecState, State, Status, Parsec, Error, monad, M};

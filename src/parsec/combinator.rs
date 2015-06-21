@@ -1,5 +1,5 @@
 use parsec::{State, Parsec, Status, Monad, monad, M};
-use parsec::atom::{pack};
+use parsec::atom::{pack, fail};
 use std::sync::Arc;
 use std::fmt::{Debug, Formatter};
 use std::fmt;
@@ -271,7 +271,13 @@ pub fn many1<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many1<T, R> where T:Clo
     Many1::new(p)
 }
 
-pub fn between<T:'static, B:'static, P:'static, E:'static>(begin:Arc<Parsec<T, B>>, parsec:Arc<Parsec<T, P>>, end:Arc<Parsec<T, E>>)
+pub fn between<T:'static, B:'static, P:'static, E:'static>
+        (begin:Arc<Parsec<T, B>>, parsec:Arc<Parsec<T, P>>, end:Arc<Parsec<T, E>>)
         ->Monad<T, P, P> where T:Clone, P:Clone, B:Clone, E:Clone {
     monad(begin.clone()).then(parsec.clone()).over(end.clone())
+}
+
+pub fn otherwise<T:'static, R:'static>(p:Arc<Parsec<T, R>>, message:String)->Either<T, R>
+where T:Clone, R:Clone {
+    either(p.clone(), Arc::new(fail(message)))
 }
