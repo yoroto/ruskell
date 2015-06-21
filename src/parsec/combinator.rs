@@ -282,3 +282,17 @@ pub fn otherwise<T:'static, R:'static>(p:Arc<Parsec<T, R>>, message:String)->Eit
 where T:Clone, R:Clone {
     either(p.clone(), Arc::new(fail(message)))
 }
+
+pub fn many_tail<T:'static, R:'static, Tail:'static>(p:Arc<Parsec<T, R>>, tail:Arc<Parsec<T, Tail>>)
+    ->Monad<T, Vec<R>, Vec<R>>
+where T:Clone, R:Clone+Debug, Tail:Clone{
+    // TODO: A fake binder between p and tail, someone manybe remove it.
+    monad(Arc::new(many(p))).over(tail)
+}
+
+pub fn many1_tail<T:'static, R:'static, Tail:'static>(p:Arc<Parsec<T, R>>, tail:Arc<Parsec<T, Tail>>)
+    ->Monad<T, Vec<R>, Vec<R>>
+where T:Clone, R:Clone+Debug, Tail:Clone{
+    // TODO: A fake binder between p and tail, someone manybe remove it.
+    monad(Arc::new(many1(p))).over(tail)
+}
