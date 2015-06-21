@@ -2,7 +2,7 @@
 #[macro_use]
 extern crate ruskell;
 use ruskell::parsec::{VecState, State, Status, Parsec, Error, monad, M};
-use ruskell::parsec::atom::{eq, eof, one_of, none_of};
+use ruskell::parsec::atom::{eq, eof, one_of, none_of, ne};
 use ruskell::parsec::combinator::{either, many, many1, between};
 use std::sync::Arc;
 use std::iter::FromIterator;
@@ -286,6 +286,22 @@ fn between_test_0() {
 
     let content = Arc::new(many(Arc::new(eq('x'))));
     let re = between(quote.clone(), content, quote)(&mut state);
+    if re.is_err() {
+        let msg = format!("{}", re.unwrap_err().message());
+        panic!(msg);
+    }
+    let data = re.unwrap();
+    let ver = "xxxxxxxx".chars().into_iter().collect::<Vec<char>>();
+    assert_eq!(data, ver);
+}
+
+#[test]
+fn between_test_1() {
+    let mut state = VecState::from_iter("This is a string in quotes: \"xxxxxxxx\".".chars());
+    let prefix = many(Arc::new(ne('\"')));
+    let quote = Arc::new(eq('\"'));
+    let content = Arc::new(many(Arc::new(eq('x'))));
+    let re = prefix.then(Arc::new(between(quote.clone(), content, quote)))(&mut state);
     if re.is_err() {
         let msg = format!("{}", re.unwrap_err().message());
         panic!(msg);

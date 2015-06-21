@@ -63,11 +63,10 @@ impl<T> Parsec<T, T> for Equal<T> where T:Eq+Display+Debug+Clone {
         let ref value = self.element;
         let val = state.next_by(&|val:&T|val.eq(value));
         val.map_err(
-                |err:SimpleError|{
+                |_:SimpleError|{
                     let pos = state.pos();
                     let element = self.element.clone();
-                    let msg = err.message();
-                    let message = format!("expect {} at {} but missmatch: {}", element, pos, msg);
+                    let message = format!("expect {} at {} but missmatch", element, pos);
                     SimpleError::new(pos, message)
                 })
     }
@@ -105,21 +104,20 @@ pub struct NotEqual<T>{
 }
 
 impl<T> NotEqual<T> where T:Eq+Display+Debug+Clone {
-    fn new(element:T) -> Equal<T> {
-        Equal{element:element}
+    fn new(element:T) -> NotEqual<T> {
+        NotEqual{element:element}
     }
 }
 
 impl<T> Parsec<T, T> for NotEqual<T> where T:Eq+Display+Debug+Clone {
     fn parse(&self, state:&mut State<T>)->Status<T>{
         let ref value = self.element;
-        let val = state.next_by(&|val:&T|val != value);
+        let val = state.next_by(&|val:&T|val.ne(value));
         val.map_err(
-                |err:SimpleError|{
+                |_:SimpleError|{
                     let pos = state.pos();
                     let element = self.element.clone();
-                    let msg = err.message();
-                    let message = format!("expect {} at {} but missmatch: {}", element, pos, msg);
+                    let message = format!("expect {} not equal element at {}", element, pos);
                     SimpleError::new(pos, message)
                 })
     }
@@ -147,7 +145,7 @@ impl<'a, T> Fn<(&'a mut State<T>, )> for NotEqual<T> where T:Eq+Display+Debug+Cl
 
 impl<T:'static+Eq+Display+Debug+Clone> M<T, T> for NotEqual<T>{}
 
-pub fn neq<T>(element:T) -> Equal<T> where T:Eq+Display+Debug+Clone {
+pub fn ne<T>(element:T) -> NotEqual<T> where T:Eq+Display+Debug+Clone {
     NotEqual::new(element)
 }
 
