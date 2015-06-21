@@ -143,132 +143,20 @@ pub fn either<T:'static, R:'static>(x: Arc<Parsec<T, R>>, y:Arc<Parsec<T, R>>)->
         Either::new(x, y)
 }
 
-pub struct Many<T, R> {
-    parsec: Arc<Parsec<T, R>>,
+pub fn many<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Either<T, Vec<R>>
+where T:Clone, R:Clone+Debug {
+    either(Arc::new(many1(Arc::new(try(p)))), Arc::new(pack(Vec::new())))
 }
 
-impl<T, R> Many<T, R> where T:Clone, R:Clone+Debug {
-    pub fn new(p:Arc<Parsec<T, R>>) -> Many<T, R> {
-        Many{parsec:p.clone()}
-    }
-}
-
-impl<T:'static, R:'static> Parsec<T, Vec<R>> for Many<T, R> where T:Clone, R:Clone+Debug {
-    fn parse(&self, state:&mut State<T>)->Status<Vec<R>> {
-        let left = Arc::new(many1(Arc::new(try(self.parsec.clone()))));
-        either(left, Arc::new(pack(Vec::new()))).parse(state)
-    }
-}
-
-impl<'a, T:'static, R:'static> FnOnce<(&'a mut State<T>, )> for Many<T, R> where T:Clone, R:Clone+Debug{
-    type Output = Status<Vec<R>>;
-    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
-        panic!("Not implement!");
-    }
-}
-
-impl<'a, T:'static, R:'static> FnMut<(&'a mut State<T>, )> for Many<T, R> where T:Clone, R:Clone+Debug{
-    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
-        panic!("Not implement!");
-    }
-}
-
-impl<'a, T:'static, R:'static> Fn<(&'a mut State<T>, )> for Many<T, R> where T:Clone, R:Clone+Debug{
-    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<Vec<R>> {
-        //self.call_once(args)
-        let (state, ) = args;
-        self.parse(state)
-    }
-}
-
-impl<T, R> Clone for Many<T, R> where T:Clone, R:Clone+Debug {
-    fn clone(&self)->Self {
-        Many{parsec:self.parsec.clone()}
-    }
-
-    fn clone_from(&mut self, source: &Self) {
-        self.parsec = source.parsec.clone();
-    }
-}
-
-impl<T, R> Debug for Many<T, R> where T:Clone, R:Clone+Debug{
-    fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
-        "<many parsec>".fmt(formatter)
-    }
-}
-
-impl<T:'static+Clone, R:'static+Clone+Debug> M<T, Vec<R>> for Many<T, R>{}
-
-pub fn many<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many<T, R> where T:Clone, R:Clone+Debug {
-    Many::new(p)
-}
-
-pub struct Many1<T, R> {
-    parsec: Arc<Parsec<T, R>>,
-}
-
-impl<T, R> Many1<T, R> where T:Clone, R:Clone+Debug {
-    pub fn new(p:Arc<Parsec<T, R>>) -> Many1<T, R> {
-        Many1{parsec:p.clone()}
-    }
-}
-
-impl<T:'static, R:'static> Parsec<T, Vec<R>> for Many1<T, R> where T:Clone, R:Clone+Debug {
-    fn parse(&self, state:&mut State<T>)->Status<Vec<R>> {
-        let parsec = self.parsec.clone();
-        monad(parsec.clone())
-        .bind(Arc::new(Box::new(move |state: &mut State<T>, x:R|->Status<Vec<R>>{
-            let mut rev = Vec::new();
-            let tail = many(parsec.clone()).parse(state);
-            let data = tail.unwrap();
-            rev.push(x);
-            rev.push_all(&data);
-            Ok(rev)
-        }))).parse(state)
-    }
-}
-
-impl<T, R> Clone for Many1<T, R> where T:Clone, R:Clone+Debug {
-    fn clone(&self)->Self {
-        Many1{parsec:self.parsec.clone()}
-    }
-
-    fn clone_from(&mut self, source: &Self) {
-        self.parsec = source.parsec.clone();
-    }
-}
-
-impl<T, R> Debug for Many1<T, R> where T:Clone, R:Clone+Debug{
-    fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
-        "<many1 parsec>".fmt(formatter)
-    }
-}
-
-impl<'a, T:'static, R:'static> FnOnce<(&'a mut State<T>, )> for Many1<T, R> where T:Clone, R:Clone+Debug{
-    type Output = Status<Vec<R>>;
-    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
-        panic!("Not implement!");
-    }
-}
-
-impl<'a, T:'static, R:'static> FnMut<(&'a mut State<T>, )> for Many1<T, R> where T:Clone, R:Clone+Debug {
-    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
-        panic!("Not implement!");
-    }
-}
-
-impl<'a, T:'static, R:'static> Fn<(&'a mut State<T>, )> for Many1<T, R> where T:Clone, R:Clone+Debug {
-    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<Vec<R>> {
-        //self.call_once(args)
-        let (state, ) = args;
-        self.parse(state)
-    }
-}
-
-impl<T:'static+Clone, R:'static+Clone+Debug> M<T, Vec<R>> for Many1<T, R>{}
-
-pub fn many1<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Many1<T, R> where T:Clone, R:Clone+Debug {
-    Many1::new(p)
+pub fn many1<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Monad<T, R, Vec<R>> where T:Clone, R:Clone+Debug {
+    monad(p.clone()).bind(Arc::new(Box::new(move |state: &mut State<T>, x: R| -> Status<Vec<R>> {
+        let mut rev = Vec::new();
+        let tail = many(p.clone()).parse(state);
+        let data = tail.unwrap();
+        rev.push(x);
+        rev.push_all(&data);
+        Ok(rev)
+    })))
 }
 
 pub fn between<T:'static, B:'static, P:'static, E:'static>
@@ -295,6 +183,135 @@ pub fn many1_tail<T:'static, R:'static, Tail:'static>(p:Arc<Parsec<T, R>>, tail:
 where T:Clone, R:Clone+Debug, Tail:Clone{
     // TODO: A fake binder between p and tail, someone manybe remove it.
     monad(Arc::new(many1(p))).over(tail)
+}
+
+// We can use many/many1 as skip, but them more effective.
+pub struct Skip<T, R> {
+    parsec: Arc<Parsec<T, R>>,
+}
+
+impl<T, R> Skip<T, R> where T:Clone, R:Clone+Debug {
+    pub fn new(p:Arc<Parsec<T, R>>) -> Skip<T, R> {
+        Skip{parsec:p.clone()}
+    }
+}
+
+impl<T:'static, R:'static> Parsec<T, Vec<R>> for Skip<T, R> where T:Clone, R:Clone+Debug {
+    fn parse(&self, state:&mut State<T>)->Status<Vec<R>> {
+        loop {
+            let re = try(self.parsec.clone()).parse(state);
+            if re.is_err() {
+                return Ok(Vec::new())
+            }
+        }
+    }
+}
+
+impl<'a, T:'static, R:'static> FnOnce<(&'a mut State<T>, )> for Skip<T, R> where T:Clone, R:Clone+Debug{
+    type Output = Status<Vec<R>>;
+    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T:'static, R:'static> FnMut<(&'a mut State<T>, )> for Skip<T, R> where T:Clone, R:Clone+Debug{
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T:'static, R:'static> Fn<(&'a mut State<T>, )> for Skip<T, R> where T:Clone, R:Clone+Debug{
+    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<Vec<R>> {
+        //self.call_once(args)
+        let (state, ) = args;
+        self.parse(state)
+    }
+}
+
+impl<T, R> Clone for Skip<T, R> where T:Clone, R:Clone+Debug {
+    fn clone(&self)->Self {
+        Skip{parsec:self.parsec.clone()}
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.parsec = source.parsec.clone();
+    }
+}
+
+impl<T, R> Debug for Skip<T, R> where T:Clone, R:Clone+Debug{
+    fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
+        "<skip parsec>".fmt(formatter)
+    }
+}
+
+impl<T:'static+Clone, R:'static+Clone+Debug> M<T, Vec<R>> for Skip<T, R>{}
+
+pub fn skip_many<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Skip<T, R> where T:Clone, R:Clone+Debug {
+    Skip::new(p)
+}
+
+pub struct Skip1<T, R> {
+    parsec: Arc<Parsec<T, R>>,
+}
+
+impl<T, R> Skip1<T, R> where T:Clone, R:Clone+Debug {
+    pub fn new(p:Arc<Parsec<T, R>>) -> Skip1<T, R> {
+        Skip1{parsec:p.clone()}
+    }
+}
+
+impl<T:'static, R:'static> Parsec<T, Vec<R>> for Skip1<T, R> where T:Clone, R:Clone+Debug {
+    fn parse(&self, state:&mut State<T>)->Status<Vec<R>> {
+        let re = self.parsec.parse(state);
+        if re.is_err() {
+            Err(re.unwrap_err())
+        } else {
+            skip_many(self.parsec.clone()).parse(state)
+        }
+    }
+}
+
+impl<T, R> Clone for Skip1<T, R> where T:Clone, R:Clone+Debug {
+    fn clone(&self)->Self {
+        Skip1{parsec:self.parsec.clone()}
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.parsec = source.parsec.clone();
+    }
+}
+
+impl<T, R> Debug for Skip1<T, R> where T:Clone, R:Clone+Debug{
+    fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
+        "<many1 parsec>".fmt(formatter)
+    }
+}
+
+impl<'a, T:'static, R:'static> FnOnce<(&'a mut State<T>, )> for Skip1<T, R> where T:Clone, R:Clone+Debug{
+    type Output = Status<Vec<R>>;
+    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T:'static, R:'static> FnMut<(&'a mut State<T>, )> for Skip1<T, R> where T:Clone, R:Clone+Debug {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<Vec<R>> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T:'static, R:'static> Fn<(&'a mut State<T>, )> for Skip1<T, R> where T:Clone, R:Clone+Debug {
+    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<Vec<R>> {
+        //self.call_once(args)
+        let (state, ) = args;
+        self.parse(state)
+    }
+}
+
+impl<T:'static+Clone, R:'static+Clone+Debug> M<T, Vec<R>> for Skip1<T, R>{}
+
+pub fn skip_many1<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Skip1<T, R> where T:Clone, R:Clone+Debug {
+    Skip1::new(p)
 }
 
 pub fn sep_by<T:'static, Sep:'static, R:'static>(sep:Arc<Parsec<T, Sep>>, parsec:Arc<Parsec<T, R>>)->Either<T, Vec<R>>
