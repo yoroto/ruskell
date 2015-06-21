@@ -307,11 +307,7 @@ where T:Clone, R:Clone+Debug, Sep:Clone{
 pub fn sep_by1<T:'static, Sep:'static, R:'static>(sep:Arc<Parsec<T, Sep>>, parsec:Arc<Parsec<T, R>>)
     ->Monad<T, R, Vec<R>>
 where T:Clone, R:Clone+Debug, Sep:Clone{
-    let sep = sep.clone();
-    let parsec = parsec.clone();
-    monad(parsec).bind(Arc::new(Box::new(|state:&mut State<T>, x:R|->Status<Vec<R>>{
-        let sep = sep.clone();
-        let parsec = parsec.clone();
+    monad(parsec.clone()).bind(Arc::new(Box::new(move |state:&mut State<T>, x:R|->Status<Vec<R>>{
         let mut rev = Vec::new();
         let tail = sep_by(sep.clone(), parsec.clone()).parse(state);
         let data = tail.unwrap();
