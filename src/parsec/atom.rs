@@ -99,6 +99,58 @@ pub fn eq<T>(element:T) -> Equal<T> where T:Eq+Display+Debug+Clone {
     Equal::new(element)
 }
 
+#[derive(Debug, Clone)]
+pub struct NotEqual<T>{
+    element : T,
+}
+
+impl<T> NotEqual<T> where T:Eq+Display+Debug+Clone {
+    fn new(element:T) -> Equal<T> {
+        Equal{element:element}
+    }
+}
+
+impl<T> Parsec<T, T> for NotEqual<T> where T:Eq+Display+Debug+Clone {
+    fn parse(&self, state:&mut State<T>)->Status<T>{
+        let ref value = self.element;
+        let val = state.next_by(&|val:&T|val != value);
+        val.map_err(
+                |err:SimpleError|{
+                    let pos = state.pos();
+                    let element = self.element.clone();
+                    let msg = err.message();
+                    let message = format!("expect {} at {} but missmatch: {}", element, pos, msg);
+                    SimpleError::new(pos, message)
+                })
+    }
+}
+
+impl<'a, T> FnOnce<(&'a mut State<T>, )> for NotEqual<T> where T:Eq+Display+Debug+Clone {
+    type Output = Status<T>;
+    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<T> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T> FnMut<(&'a mut State<T>, )> for NotEqual<T> where T:Eq+Display+Debug+Clone {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<T> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T> Fn<(&'a mut State<T>, )> for NotEqual<T> where T:Eq+Display+Debug+Clone {
+    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<T> {
+        let (state, ) = args;
+        self.parse(state)
+    }
+}
+
+impl<T:'static+Eq+Display+Debug+Clone> M<T, T> for NotEqual<T>{}
+
+pub fn neq<T>(element:T) -> Equal<T> where T:Eq+Display+Debug+Clone {
+    NotEqual::new(element)
+}
+
 pub struct Eof<T>{
     data: PhantomData<T>,
 }
