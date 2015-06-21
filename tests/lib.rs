@@ -3,7 +3,7 @@
 extern crate ruskell;
 use ruskell::parsec::{VecState, State, Status, Parsec, Error, monad, M};
 use ruskell::parsec::atom::{one, eq, eof, one_of, none_of, ne};
-use ruskell::parsec::combinator::{either, many, many1, between, many_tail};
+use ruskell::parsec::combinator::{either, many, many1, between, many_tail, many1_tail};
 use std::sync::Arc;
 use std::iter::FromIterator;
 
@@ -329,6 +329,34 @@ fn many_tail_test_0() {
 fn many_tail_test_1() {
     let mut state = VecState::from_iter("This is a string.".chars());
     let content = many_tail(Arc::new(one()), Arc::new(eof()));
+    let re = content(&mut state);
+    if re.is_err() {
+        let msg = format!("{}", re.unwrap_err().message());
+        panic!(msg);
+    }
+    let data = re.unwrap();
+    let ver = "This is a string.".chars().into_iter().collect::<Vec<char>>();
+    assert_eq!(data, ver);
+}
+
+#[test]
+fn many1_tail_test_0() {
+    let mut state = VecState::from_iter("This is a string.".chars());
+    let content = many1_tail(Arc::new(ne('.')), Arc::new(eq('.')));
+    let re = content(&mut state);
+    if re.is_err() {
+        let msg = format!("{}", re.unwrap_err().message());
+        panic!(msg);
+    }
+    let data = re.unwrap();
+    let ver = "This is a string".chars().into_iter().collect::<Vec<char>>();
+    assert_eq!(data, ver);
+}
+
+#[test]
+fn many1_tail_test_1() {
+    let mut state = VecState::from_iter("This is a string.".chars());
+    let content = many1_tail(Arc::new(one()), Arc::new(eof()));
     let re = content(&mut state);
     if re.is_err() {
         let msg = format!("{}", re.unwrap_err().message());
