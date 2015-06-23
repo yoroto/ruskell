@@ -1,7 +1,7 @@
 #![feature(vec_push_all)]
 #[macro_use]
 extern crate ruskell;
-use ruskell::parsec::{VecState, State, Status, Parsec, Error, monad, M};
+use ruskell::parsec::{VecState, State, Status, Parsec, Error, monad, M, bind, parser};
 use ruskell::parsec::atom::{one, eq, eof, one_of, none_of, ne};
 use ruskell::parsec::combinator::{either, many, many1, between, many_tail, many1_tail};
 use std::sync::Arc;
@@ -158,6 +158,33 @@ fn monad_test_0() {
 }
 
 #[test]
+fn parser_test_0() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = eq('a');
+    let exp = parser(Arc::new(a)).bind(Arc::new(Box::new(move |state:&mut State<char>, x:char|->Status<Vec<char>>{
+            eq('b').parse(state).map(|y:char| -> Vec<char>{
+                let mut res = Vec::new();
+                res.push(x);
+                res.push(y);
+                res
+            })
+        }))).bind(
+            Arc::new(Box::new(move |state: &mut State<char>, v:Vec<char>|->Status<Vec<char>>{
+                eq('c').parse(state).map(|x:char| -> Vec<char> {
+                    let mut res = Vec::new();
+                    res.push_all(&v);
+                    res.push(x);
+                    res
+                })
+        })));
+    let re = exp(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    let ver = vec!['a', 'b', 'c'];
+    assert_eq!(data, ver);
+}
+
+#[test]
 fn then_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
     let a = eq('a');
@@ -171,10 +198,34 @@ fn then_test_0() {
 }
 
 #[test]
+fn parser_test_1() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = eq('a');
+    let b = eq('b');
+    let c = eq('c');
+    let exp = parser(Arc::new(a)).over(Arc::new(b)).then(Arc::new(c));
+    let re = exp(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, 'c');
+}
+
+#[test]
 fn bind_then_over_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
     let a = eq('a');
     let exp = monad(Arc::new(a)).then(Arc::new(eq('b'))).over(Arc::new(eq('c'))).over(Arc::new(eof()));
+    let re = exp(&mut state);
+    assert!(re.is_ok());
+    let data = re.unwrap();
+    assert_eq!(data, 'b');
+}
+
+#[test]
+fn parser_then_over_test_0() {
+    let mut state = VecState::from_iter("abc".chars().into_iter());
+    let a = eq('a');
+    let exp = parser(Arc::new(a)).then(Arc::new(eq('b'))).over(Arc::new(eq('c'))).over(Arc::new(eof()));
     let re = exp(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();

@@ -1,4 +1,4 @@
-use parsec::{State, SimpleError, Error, Parsec, Status, M, parser, binder};
+use parsec::{State, SimpleError, Error, Parsec, Status, M};
 use std::fmt::{Debug, Display, Formatter};
 use std::fmt;
 use std::sync::Arc;
@@ -173,8 +173,8 @@ impl<T> Parsec<T, ()> for Eof<T> where T:Clone+Display {
 }
 
 impl<'a, S, T> FnOnce<(&'a mut S, )> for Eof<T> where S:State<T>{
-    type Output = Status<T>;
-    extern "rust-call" fn call_once(self, _: (&'a mut S, )) -> Status<T> {
+    type Output = Status<()>;
+    extern "rust-call" fn call_once(self, _: (&'a mut S, )) -> Status<()> {
         panic!("Not implement!");
     }
 }

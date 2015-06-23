@@ -1,4 +1,4 @@
-use parsec::{State, Parsec, Status, Monad, monad, M};
+use parsec::{State, Parsec, Status, Monad, monad, M, parser};
 use parsec::atom::{pack, fail};
 use std::sync::Arc;
 use std::fmt::{Debug, Formatter};
@@ -140,7 +140,7 @@ impl<T, R> Debug for Either<T, R> where T:Clone {
 impl<T:'static+Clone, R:'static+Clone> M<T, R> for Either<T, R>{}
 
 pub fn either<T:'static, R:'static>(x: Arc<Parsec<T, R>>, y:Arc<Parsec<T, R>>)->Either<T, R> where T:Clone{
-        Either::new(x, y)
+    Either::new(x, y)
 }
 
 pub fn many<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Either<T, Vec<R>>
@@ -149,7 +149,7 @@ where T:Clone, R:Clone+Debug {
 }
 
 pub fn many1<T:'static, R:'static>(p:Arc<Parsec<T, R>>)->Monad<T, R, Vec<R>> where T:Clone, R:Clone+Debug {
-    monad(p.clone()).bind(Arc::new(Box::new(move |state: &mut State<T>, x: R| -> Status<Vec<R>> {
+    parser(p.clone()).bind(Arc::new(Box::new(move |state: &mut State<T>, x: R| -> Status<Vec<R>> {
         let mut rev = Vec::new();
         let tail = many(p.clone()).parse(state);
         let data = tail.unwrap();
@@ -163,7 +163,7 @@ pub fn between<T:'static, B:'static, P:'static, E:'static>
         (begin:Arc<Parsec<T, B>>, parsec:Arc<Parsec<T, P>>, end:Arc<Parsec<T, E>>)
         ->Monad<T, P, P> where T:Clone, P:Clone, B:Clone, E:Clone {
     // TODO: A fake binder between begin and parsec then, someone manybe remove it.
-    monad(begin).then(parsec).over(end)
+    parser(begin).then(parsec).over(end)
 }
 
 pub fn otherwise<T:'static, R:'static>(p:Arc<Parsec<T, R>>, message:String)->Either<T, R>
@@ -175,14 +175,14 @@ pub fn many_tail<T:'static, R:'static, Tail:'static>(p:Arc<Parsec<T, R>>, tail:A
     ->Monad<T, Vec<R>, Vec<R>>
 where T:Clone, R:Clone+Debug, Tail:Clone{
     // TODO: A fake binder between p and tail, someone manybe remove it.
-    monad(Arc::new(many(p))).over(tail)
+    parser(Arc::new(many(p))).over(tail)
 }
 
 pub fn many1_tail<T:'static, R:'static, Tail:'static>(p:Arc<Parsec<T, R>>, tail:Arc<Parsec<T, Tail>>)
     ->Monad<T, Vec<R>, Vec<R>>
 where T:Clone, R:Clone+Debug, Tail:Clone{
     // TODO: A fake binder between p and tail, someone manybe remove it.
-    monad(Arc::new(many1(p))).over(tail)
+    parser(Arc::new(many1(p))).over(tail)
 }
 
 // We can use many/many1 as skip, but them more effective.
