@@ -3,7 +3,6 @@ use parsec::combinator::{Either, either, try, many1};
 use parsec::atom::{OneOf, pack, eq, one_of};
 use std::sync::Arc;
 use std::boxed::Box;
-//use std::string::String;
 
 pub fn space() -> OneOf<char> {
     one_of(&vec![' ', '\t'])
