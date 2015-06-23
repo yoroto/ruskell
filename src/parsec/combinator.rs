@@ -63,7 +63,7 @@ impl<T, R> Debug for Try<T, R> where T:Clone{
 
 impl<T:'static+Clone, R:'static+Clone> M<T, R> for Try<T, R>{}
 
-fn try<T, R>(p:Arc<Parsec<T, R>>) -> Try<T, R> where T:Clone {
+pub fn try<T, R>(p:Arc<Parsec<T, R>>) -> Try<T, R> where T:Clone {
     Try::new(p)
 }
 

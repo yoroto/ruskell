@@ -1,7 +1,7 @@
 #![feature(vec_push_all)]
 #[macro_use]
 extern crate ruskell;
-use ruskell::parsec::{VecState, State, Status, Parsec, Error, monad, M, bind, parser};
+use ruskell::parsec::{VecState, State, Status, Parsec, Error, monad, M, parser};
 use ruskell::parsec::atom::{one, eq, eof, one_of, none_of, ne};
 use ruskell::parsec::combinator::{either, many, many1, between, many_tail, many1_tail};
 use std::sync::Arc;

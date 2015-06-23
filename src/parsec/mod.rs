@@ -1,6 +1,7 @@
 use std::vec::Vec;
 use std::iter::FromIterator;
 use std::sync::Arc;
+use std::boxed::Box;
 use std::fmt::{Debug, Formatter};
 use std::fmt;
 use std::clone::Clone;
@@ -260,18 +261,18 @@ pub fn parser<T:'static, R:'static>(parsec:Arc<Parsec<T, R>>)->Parser<T, R> wher
 }
 
 // A monad just return bind
-pub struct Binder<T, R> {
+pub struct Bind<T, R> {
     binder: Arc<Box<Fn(&mut State<T>, T)->Status<R>>>,
 }
 
-impl<T:'static, R:'static> Binder<T, R>
+impl<T:'static, R:'static> Bind<T, R>
 where T:Clone, R:Clone {
-    pub fn new(binder: Arc<Box<Fn(&mut State<T>, T)->Status<R>>>)-> Binder<T, R> {
-        Binder{binder:binder.clone()}
+    pub fn new(binder: Arc<Box<Fn(&mut State<T>, T)->Status<R>>>)-> Bind<T, R> {
+        Bind{binder:binder.clone()}
     }
 }
 
-impl<T, R> Parsec<T, R> for Binder<T, R> where T:Clone, R:Clone {
+impl<T, R> Parsec<T, R> for Bind<T, R> where T:Clone, R:Clone {
     fn parse(&self, state: &mut State<T>) -> Status<R> {
         let n = state.next();
         n.map_or(Err(SimpleError::new(state.pos(), String::from("eof"))),
@@ -279,29 +280,29 @@ impl<T, R> Parsec<T, R> for Binder<T, R> where T:Clone, R:Clone {
     }
 }
 
-impl<'a, T, R> FnOnce<(&'a mut State<T>, )> for Binder<T, R> where T:Clone, R:Clone {
+impl<'a, T, R> FnOnce<(&'a mut State<T>, )> for Bind<T, R> where T:Clone, R:Clone {
     type Output = Status<R>;
     extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<R> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T, R> FnMut<(&'a mut State<T>, )> for Binder<T, R> where T:Clone, R:Clone {
+impl<'a, T, R> FnMut<(&'a mut State<T>, )> for Bind<T, R> where T:Clone, R:Clone {
     extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<R> {
         panic!("Not implement!");
     }
 }
 
-impl<'a, T, R> Fn<(&'a mut State<T>, )> for Binder<T, R> where T:Clone, R:Clone {
+impl<'a, T, R> Fn<(&'a mut State<T>, )> for Bind<T, R> where T:Clone, R:Clone {
     extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<R> {
         let (state, ) = args;
         self.parse(state)
     }
 }
 
-impl<T, R> Clone for Binder<T, R> where T:Clone, R:Clone {
+impl<T, R> Clone for Bind<T, R> where T:Clone, R:Clone {
     fn clone(&self)->Self {
-        Binder{binder:self.binder.clone()}
+        Bind{binder:self.binder.clone()}
     }
 
     fn clone_from(&mut self, source: &Self) {
@@ -309,19 +310,29 @@ impl<T, R> Clone for Binder<T, R> where T:Clone, R:Clone {
     }
 }
 
-impl<T, R> Debug for Binder<T, R> where T:Clone, R:Clone{
+impl<T, R> Debug for Bind<T, R> where T:Clone, R:Clone{
     fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
         "<bind function monad environment>".fmt(formatter)
     }
 }
 
-impl<T:'static, R:'static> M<T, R> for Binder<T, R> where T:Clone, R:Clone {}
+impl<T:'static, R:'static> M<T, R> for Bind<T, R> where T:Clone, R:Clone {}
 
-pub fn bind<T:'static, R:'static>(binder: Arc<Box<Fn(&mut State<T>, T)->Status<R>>>)->Binder<T, R>
+pub fn bind<T:'static, R:'static>(binder: Arc<Box<Fn(&mut State<T>, T)->Status<R>>>)->Bind<T, R>
 where T:Clone, R:Clone {
-    Binder::new(binder)
+    Bind::new(binder)
 }
 
+#[macro_export]
+macro_rules! bnd {
+    ($x:expr) => (Arc::new(Box::new($x)));
+}
+
+#[macro_export]
+macro_rules! arc {
+    ($x:expr) => (Arc::new($x));
+}
 
 pub mod atom;
 pub mod combinator;
+pub mod text;
