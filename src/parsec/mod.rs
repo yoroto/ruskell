@@ -199,5 +199,129 @@ pub fn monad<T:'static, R:'static>(parsec:Arc<Parsec<T, R>>)->Monad<T, R, R> whe
     Monad::new(parsec, Arc::new(Box::new(|_:&mut State<T>, re:R| Ok(re))))
 }
 
+// A monad just return parsec
+pub struct Parser<T, R> {
+    parsec: Arc<Parsec<T, R>>,
+}
+
+impl<T:'static, R:'static> Parser<T, R>
+where T:Clone, R:Clone {
+    pub fn new(parsec: Arc<Parsec<T, R>> )-> Parser<T, R> {
+        Parser{parsec:parsec.clone()}
+    }
+}
+
+impl<T, R> Parsec<T, R> for Parser<T, R> where T:Clone, R:Clone {
+    fn parse(&self, state: &mut State<T>) -> Status<R> {
+        self.parsec.parse(state)
+    }
+}
+
+impl<'a, T, R> FnOnce<(&'a mut State<T>, )> for Parser<T, R> where T:Clone, R:Clone {
+    type Output = Status<R>;
+    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<R> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T, R> FnMut<(&'a mut State<T>, )> for Parser<T, R> where T:Clone, R:Clone {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<R> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T, R> Fn<(&'a mut State<T>, )> for Parser<T, R> where T:Clone, R:Clone {
+    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<R> {
+        let (state, ) = args;
+        self.parse(state)
+    }
+}
+
+impl<T, R> Clone for Parser<T, R> where T:Clone, R:Clone {
+    fn clone(&self)->Self {
+        Parser{parsec:self.parsec.clone()}
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.parsec = source.parsec.clone();
+    }
+}
+
+impl<T, R> Debug for Parser<T, R> where T:Clone, R:Clone{
+    fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
+        "<parsec monad environment>".fmt(formatter)
+    }
+}
+
+impl<T:'static, R:'static> M<T, R> for Parser<T, R> where T:Clone, R:Clone {}
+
+pub fn parser<T:'static, R:'static>(parsec:Arc<Parsec<T, R>>)->Parser<T, R> where T:Clone, R:Clone {
+    Parser::new(parsec)
+}
+
+// A monad just return bind
+pub struct Binder<T, R> {
+    binder: Arc<Box<Fn(&mut State<T>, T)->Status<R>>>,
+}
+
+impl<T:'static, R:'static> Binder<T, R>
+where T:Clone, R:Clone {
+    pub fn new(binder: Arc<Box<Fn(&mut State<T>, T)->Status<R>>>)-> Binder<T, R> {
+        Binder{binder:binder.clone()}
+    }
+}
+
+impl<T, R> Parsec<T, R> for Binder<T, R> where T:Clone, R:Clone {
+    fn parse(&self, state: &mut State<T>) -> Status<R> {
+        let n = state.next();
+        n.map_or(Err(SimpleError::new(state.pos(), String::from("eof"))),
+                |x:T| (self.binder)(state, x))
+    }
+}
+
+impl<'a, T, R> FnOnce<(&'a mut State<T>, )> for Binder<T, R> where T:Clone, R:Clone {
+    type Output = Status<R>;
+    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<R> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T, R> FnMut<(&'a mut State<T>, )> for Binder<T, R> where T:Clone, R:Clone {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<R> {
+        panic!("Not implement!");
+    }
+}
+
+impl<'a, T, R> Fn<(&'a mut State<T>, )> for Binder<T, R> where T:Clone, R:Clone {
+    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<R> {
+        let (state, ) = args;
+        self.parse(state)
+    }
+}
+
+impl<T, R> Clone for Binder<T, R> where T:Clone, R:Clone {
+    fn clone(&self)->Self {
+        Binder{binder:self.binder.clone()}
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.binder = source.binder.clone();
+    }
+}
+
+impl<T, R> Debug for Binder<T, R> where T:Clone, R:Clone{
+    fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
+        "<bind function monad environment>".fmt(formatter)
+    }
+}
+
+impl<T:'static, R:'static> M<T, R> for Binder<T, R> where T:Clone, R:Clone {}
+
+pub fn bind<T:'static, R:'static>(binder: Arc<Box<Fn(&mut State<T>, T)->Status<R>>>)->Binder<T, R>
+where T:Clone, R:Clone {
+    Binder::new(binder)
+}
+
+
 pub mod atom;
 pub mod combinator;
