@@ -57,8 +57,8 @@ impl<T> State<T> for VecState<T> where T:Clone {
     fn next_by(&mut self, pred:&Fn(&T)->bool)->Status<T>{
         if 0 as usize <= self.index && self.index < self.buffer.len() {
             let ref item = self.buffer[self.index];
+            self.index += 1;
             if pred(item) {
-                self.index += 1;
                 Ok(item.clone())
             } else {
                 Err(SimpleError::new(self.index, String::from("predicate failed")))

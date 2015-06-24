@@ -3,7 +3,7 @@
 extern crate ruskell;
 use ruskell::parsec::{VecState, State, Status, Parsec, Error, Monad};
 use ruskell::parsec::atom::{one, eq, eof, one_of, none_of, ne};
-use ruskell::parsec::combinator::{either, many, many1, between, many_tail, many1_tail};
+use ruskell::parsec::combinator::{try, either, many, many1, between, many_tail, many1_tail};
 use std::sync::Arc;
 use std::iter::FromIterator;
 
@@ -96,8 +96,8 @@ fn neq_of_test_1() {
 #[test]
 fn either_test_0() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
-    let a = eq('a');
-    let b = eq('b');
+    let a = try(eq('a'));
+    let b = try(eq('b'));
     let e = either(b, a);
     let re = e(&mut state);
     assert!(re.is_ok());
@@ -110,7 +110,7 @@ fn either_test_1() {
     let mut state = VecState::from_iter("abc".chars().into_iter());
     let a = eq('a');
     let b = eq('b');
-    let e = either(a, b);
+    let e = either(try(a), try(b));
     let re = e(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
@@ -123,7 +123,7 @@ fn either_test_2() {
     let a = eq('a');
     let b = eq('b');
     let c = eq('c');
-    let e = either(b, c).or(a);
+    let e = either(try(b), try(c)).or(try(a));
     let re = e(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
@@ -245,7 +245,7 @@ fn many_test_2() {
     let b = eq('b');
     let c = eq('c');
 
-    let re = many(either(a, b).or(c))(&mut state);
+    let re = many(either(try(a), try(b)).or(try(c)))(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
     let ver = vec!['a', 'b', 'c'];
@@ -259,7 +259,7 @@ fn many1_test_0() {
     let b = eq('b');
     let c = eq('c');
 
-    let re = many1(either(a, b).or(c))(&mut state);
+    let re = many1(either(try(a), try(b)).or(try(c)))(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
     let ver = vec!['a', 'b', 'c'];
@@ -273,7 +273,7 @@ fn many1_test_1() {
     let b = eq('b');
     let c = eq('c');
 
-    let re = many1(either(a, b).or(c))(&mut state);
+    let re = many1(either(try(a), try(b)).or(try(c)))(&mut state);
     assert!(re.is_err());
 }
 
@@ -283,7 +283,7 @@ fn many1_test_2() {
     let a = eq('a');
     let b = eq('b');
 
-    let re = many1(either(a, b))(&mut state);
+    let re = many1(either(try(a), try(b)))(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
     let ver = vec!['a', 'b'];
