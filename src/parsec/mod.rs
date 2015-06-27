@@ -5,11 +5,22 @@ use std::boxed::Box;
 use std::fmt::{Debug, Formatter};
 use std::fmt;
 use std::clone::Clone;
+use std::convert::{From, Into};
 
 //Arc<Box<Closure>>
 #[macro_export]
 macro_rules! abc {
     ($x:expr) => (Arc::new(Box::new($x)));
+}
+
+pub trait State<T> {
+    fn pos(&self)-> usize;
+    fn seek_to(&mut self, usize)->bool;
+    fn next(&mut self)->Option<T>;
+    fn next_by(&mut self, &Fn(&T)->bool)->Status<T>;
+    fn err(&self, message:String)->ParsecError {
+        ParsecError::new(self.pos(), message)
+    }
 }
 
 pub struct VecState<T> {
@@ -24,13 +35,6 @@ impl<A> FromIterator<A> for VecState<A> {
             buffer:Vec::from_iter(iterator.into_iter()),
         }
     }
-}
-
-pub trait State<T> {
-    fn pos(&self)-> usize;
-    fn seek_to(&mut self, usize)->bool;
-    fn next(&mut self)->Option<T>;
-    fn next_by(&mut self, &Fn(&T)->bool)->Status<T>;
 }
 
 impl<T> State<T> for VecState<T> where T:Clone {
@@ -61,24 +65,24 @@ impl<T> State<T> for VecState<T> where T:Clone {
             if pred(item) {
                 Ok(item.clone())
             } else {
-                Err(SimpleError::new(self.index, String::from("predicate failed")))
+                Err(self.err(String::from("predicate failed")))
             }
         } else {
-            Err(SimpleError::new(self.index, String::from("eof")))
+            Err(self.err(String::from("eof")))
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct SimpleError {
+pub struct ParsecError {
     _pos: usize,
     _message: String,
 
 }
 
-impl SimpleError {
-    pub fn new(pos:usize, message:String)->SimpleError{
-        SimpleError{
+impl ParsecError {
+    pub fn new(pos:usize, message:String)->ParsecError{
+        ParsecError{
             _pos: pos,
             _message: message,
         }
@@ -90,12 +94,24 @@ pub trait Error {
     fn message(&self)->&str;
 }
 
-impl Error for SimpleError {
+impl Error for ParsecError {
     fn pos(&self)->usize {
         self._pos
     }
     fn message(&self)->&str {
         self._message.as_str()
+    }
+}
+
+impl From<Box<Error>> for ParsecError {
+    fn from(err: Box<Error>)->ParsecError {
+        ParsecError::new(err.pos(), String::from(err.message()))
+    }
+}
+
+impl<T> Into<Status<T>> for Box<ParsecError> {
+    fn into(self)->Status<T>{
+        Err(ParsecError::new(self.pos(), String::from(self.message())))
     }
 }
 
@@ -144,7 +160,7 @@ pub trait Monad<T:'static, R:'static>:Parsec<T, R> where Self:Clone+'static, T:C
     }
 }
 
-pub type Status<T> = Result<T, SimpleError>;
+pub type Status<T> = Result<T, ParsecError>;
 
 // A monad just return closure
 pub struct Parser<T, R> {

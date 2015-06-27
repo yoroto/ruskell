@@ -4,6 +4,51 @@ use parsec::atom::{OneOf, pack, eq, one_of};
 use std::sync::Arc;
 use std::boxed::Box;
 
+pub struct StringState {
+    buffer:String,
+    index:usize,
+}
+
+impl StringState {
+    pub fn new(data:String)->StringState {
+        StringState{buffer:data, index:0}
+    }
+}
+
+impl State<char> for StringState {
+    fn pos(&self)-> usize {
+        self.index
+    }
+    fn seek_to(&mut self, to:usize)->bool{
+        if 0 as usize <= to && to < self.buffer.len() {
+            self.index = to;
+            true
+        } else {
+            false
+        }
+    }
+    fn next(&mut self)->Option<char> {
+        let next= self.index+1;
+        let re = self.buffer.chars().nth(next);
+        if re.is_some() {
+            self.index = next;
+        }
+        re
+    }
+    fn next_by(&mut self, pred:&Fn(&char)->bool)->Status<char> {
+        let data = self.next();
+        if data.is_none() {
+            return Err(self.err(String::from("eof")));
+        } else {
+            let item = data.unwrap();
+            if pred(&item) {
+                return Ok(item.clone());
+            }
+        }
+        return Err(self.err(String::from("predicate failed")));
+    }
+}
+
 pub fn space() -> OneOf<char> {
     one_of(&vec![' ', '\t'])
 }

@@ -1,4 +1,4 @@
-use parsec::{State, SimpleError, Error, Parsec, Status, Monad};
+use parsec::{State, ParsecError, Error, Parsec, Status, Monad};
 use std::fmt::{Debug, Display, Formatter};
 use std::fmt;
 use std::sync::Arc;
@@ -17,7 +17,7 @@ impl<T> One <T> where T:Debug+Clone {
 
 impl<T> Parsec<T, T> for One<T> where T:Debug+Clone {
     fn parse(&self, state:&mut State<T>)->Status<T>{
-        state.next().ok_or(SimpleError::new(state.pos(), String::from("eof")))
+        state.next().ok_or(ParsecError::new(state.pos(), String::from("eof")))
     }
 }
 
@@ -63,11 +63,11 @@ impl<T> Parsec<T, T> for Equal<T> where T:Eq+Display+Debug+Clone {
         let ref value = self.element;
         let val = state.next_by(&|val:&T|val.eq(value));
         val.map_err(
-                |_:SimpleError|{
+                |_:ParsecError|{
                     let pos = state.pos();
                     let element = self.element.clone();
                     let message = format!("expect {} at {} but missmatch", element, pos);
-                    SimpleError::new(pos, message)
+                    ParsecError::new(pos, message)
                 })
     }
 }
@@ -114,11 +114,11 @@ impl<T> Parsec<T, T> for NotEqual<T> where T:Eq+Display+Debug+Clone {
         let ref value = self.element;
         let val = state.next_by(&|val:&T|val.ne(value));
         val.map_err(
-                |_:SimpleError|{
+                |_:ParsecError|{
                     let pos = state.pos();
                     let element = self.element.clone();
                     let message = format!("expect {} not equal element at {}", element, pos);
-                    SimpleError::new(pos, message)
+                    ParsecError::new(pos, message)
                 })
     }
 }
@@ -167,7 +167,7 @@ impl<T> Parsec<T, ()> for Eof<T> where T:Clone+Display {
         } else {
             let pos = state.pos();
             let message = format!("expect eof at {} but got value {}", pos, val.unwrap());
-            Err(SimpleError::new(pos, message))
+            Err(ParsecError::new(pos, message))
         }
     }
 }
@@ -230,7 +230,7 @@ impl<T> Parsec<T, T> for OneOf<T> where T:Eq+Display+Clone+Debug {
     fn parse(&self, state:&mut State<T>)->Status<T>{
         let next = state.next();
         if next.is_none() {
-            Err(SimpleError::new(state.pos(), String::from("eof")))
+            Err(ParsecError::new(state.pos(), String::from("eof")))
         } else {
             let it = next.unwrap();
             for d in self.elements.iter() {
@@ -238,8 +238,8 @@ impl<T> Parsec<T, T> for OneOf<T> where T:Eq+Display+Clone+Debug {
                     return Ok(it);
                 }
             }
-            let message = format!("<expect one of {:?}, got:{}>", self.elements, it);
-            Err(SimpleError::new(state.pos(), String::from(message)))
+            let message = format!("<expect one of {:?} at {}, got:{}>", self.elements, state.pos(), it);
+            Err(ParsecError::new(state.pos(), String::from(message)))
         }
     }
 }
@@ -288,13 +288,13 @@ impl<T> Parsec<T, T> for NoneOf<T> where T:Eq+Display+Clone+Debug {
     fn parse(&self, state:&mut State<T>)->Status<T>{
         let next = state.next();
         if next.is_none() {
-            Err(SimpleError::new(state.pos(), String::from("eof")))
+            Err(ParsecError::new(state.pos(), String::from("eof")))
         } else {
             let it = next.unwrap();
             for d in self.elements.iter() {
                 if d == &it {
-                    let message = format!("<expect none of {:?}, got:{}>", self.elements, it);
-                    return Err(SimpleError::new(state.pos(), String::from(message)))
+                    let message = format!("<expect none of {:?} at {}, got:{}>", self.elements, state.pos(), it);
+                    return Err(ParsecError::new(state.pos(), String::from(message)))
                 }
             }
             return Ok(it);
@@ -403,7 +403,7 @@ impl<T, R> Fail<T, R> where T: Clone, R:Clone {
 
 impl<T, R> Parsec<T, R> for Fail<T, R> where T:Clone, R: Clone {
     fn parse(&self, state:&mut State<T>)->Status<R>{
-        Err(SimpleError::new(state.pos(), String::from(self.message.as_str())))
+        Err(ParsecError::new(state.pos(), String::from(self.message.as_str())))
     }
 }
 
