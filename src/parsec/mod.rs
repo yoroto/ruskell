@@ -2,10 +2,11 @@ use std::vec::Vec;
 use std::iter::FromIterator;
 use std::sync::Arc;
 use std::boxed::Box;
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Formatter, Display};
 use std::fmt;
 use std::clone::Clone;
 use std::convert::{From, Into};
+use std::error;
 
 //Arc<Box<Closure>>
 #[macro_export]
@@ -18,8 +19,8 @@ pub trait State<T> {
     fn seek_to(&mut self, usize)->bool;
     fn next(&mut self)->Option<T>;
     fn next_by(&mut self, &Fn(&T)->bool)->Status<T>;
-    fn err(&self, message:String)->ParsecError {
-        ParsecError::new(self.pos(), message)
+    fn err(&self, description:String)->ParsecError {
+        ParsecError::new(self.pos(), description)
     }
 }
 
@@ -73,45 +74,43 @@ impl<T> State<T> for VecState<T> where T:Clone {
     }
 }
 
+pub trait Error:error::Error {
+    fn pos(&self)->usize;
+}
+
 #[derive(Debug, Clone)]
 pub struct ParsecError {
     _pos: usize,
-    _message: String,
+    message: String,
 
 }
 
 impl ParsecError {
-    pub fn new(pos:usize, message:String)->ParsecError{
+    pub fn new(pos:usize, description:String)->ParsecError{
         ParsecError{
             _pos: pos,
-            _message: message,
+            message: description,
         }
     }
-}
-
-pub trait Error {
-    fn pos(&self)->usize;
-    fn message(&self)->&str;
 }
 
 impl Error for ParsecError {
     fn pos(&self)->usize {
         self._pos
     }
-    fn message(&self)->&str {
-        self._message.as_str()
+}
+impl error::Error for ParsecError {
+    fn description(&self)->&str {
+        self.message.as_str()
+    }
+    fn cause(&self) -> Option<&error::Error> {
+        Some(self)
     }
 }
 
-impl From<Box<Error>> for ParsecError {
-    fn from(err: Box<Error>)->ParsecError {
-        ParsecError::new(err.pos(), String::from(err.message()))
-    }
-}
-
-impl<T> Into<Status<T>> for Box<ParsecError> {
-    fn into(self)->Status<T>{
-        Err(ParsecError::new(self.pos(), String::from(self.message())))
+impl Display for ParsecError {
+    fn fmt(&self, formatter:&mut Formatter) -> Result<(), fmt::Error> {
+        write!(formatter, "{}", self.message)
     }
 }
 
@@ -212,7 +211,7 @@ impl<T, R> Clone for Parser<T, R> where T:Clone, R:Clone {
 
 impl<T, R> Debug for Parser<T, R> where T:Clone, R:Clone{
     fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
-        "<closure parserer monad environment>".fmt(formatter)
+        write!(formatter, "<closure parserer monad environment>")
     }
 }
 

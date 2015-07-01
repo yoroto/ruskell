@@ -66,8 +66,8 @@ impl<T> Parsec<T, T> for Equal<T> where T:Eq+Display+Debug+Clone {
                 |_:ParsecError|{
                     let pos = state.pos();
                     let element = self.element.clone();
-                    let message = format!("expect {} at {} but missmatch", element, pos);
-                    ParsecError::new(pos, message)
+                    let description = format!("expect {} at {} but missmatch", element, pos);
+                    ParsecError::new(pos, description)
                 })
     }
 }
@@ -117,8 +117,8 @@ impl<T> Parsec<T, T> for NotEqual<T> where T:Eq+Display+Debug+Clone {
                 |_:ParsecError|{
                     let pos = state.pos();
                     let element = self.element.clone();
-                    let message = format!("expect {} not equal element at {}", element, pos);
-                    ParsecError::new(pos, message)
+                    let description = format!("expect {} not equal element at {}", element, pos);
+                    ParsecError::new(pos, description)
                 })
     }
 }
@@ -166,8 +166,8 @@ impl<T> Parsec<T, ()> for Eof<T> where T:Clone+Display {
             Ok(())
         } else {
             let pos = state.pos();
-            let message = format!("expect eof at {} but got value {}", pos, val.unwrap());
-            Err(ParsecError::new(pos, message))
+            let description = format!("expect eof at {} but got value {}", pos, val.unwrap());
+            Err(ParsecError::new(pos, description))
         }
     }
 }
@@ -238,8 +238,8 @@ impl<T> Parsec<T, T> for OneOf<T> where T:Eq+Display+Clone+Debug {
                     return Ok(it);
                 }
             }
-            let message = format!("<expect one of {:?} at {}, got:{}>", self.elements, state.pos(), it);
-            Err(ParsecError::new(state.pos(), String::from(message)))
+            let description = format!("<expect one of {:?} at {}, got:{}>", self.elements, state.pos(), it);
+            Err(ParsecError::new(state.pos(), String::from(description)))
         }
     }
 }
@@ -293,8 +293,8 @@ impl<T> Parsec<T, T> for NoneOf<T> where T:Eq+Display+Clone+Debug {
             let it = next.unwrap();
             for d in self.elements.iter() {
                 if d == &it {
-                    let message = format!("<expect none of {:?} at {}, got:{}>", self.elements, state.pos(), it);
-                    return Err(ParsecError::new(state.pos(), String::from(message)))
+                    let description = format!("<expect none of {:?} at {}, got:{}>", self.elements, state.pos(), it);
+                    return Err(ParsecError::new(state.pos(), String::from(description)))
                 }
             }
             return Ok(it);
@@ -389,21 +389,21 @@ pub fn pack<I, T>(element:T) -> Pack<I, T> where T:Clone+Debug {
 }
 
 pub struct Fail<T, R>{
-    message:Arc<String>,
+    description:Arc<String>,
     input_type: PhantomData<T>,
     output_type: PhantomData<R>,
 }
 
 impl<T, R> Fail<T, R> where T: Clone, R:Clone {
-    fn new(message:String) -> Fail<T, R> {
-        let msg = Arc::new(message);
-        Fail{message:msg, input_type:PhantomData, output_type:PhantomData}
+    fn new(description:String) -> Fail<T, R> {
+        let msg = Arc::new(description);
+        Fail{description:msg, input_type:PhantomData, output_type:PhantomData}
     }
 }
 
 impl<T, R> Parsec<T, R> for Fail<T, R> where T:Clone, R: Clone {
     fn parse(&self, state:&mut State<T>)->Status<R>{
-        Err(ParsecError::new(state.pos(), String::from(self.message.as_str())))
+        Err(ParsecError::new(state.pos(), String::from(self.description.as_str())))
     }
 }
 
@@ -429,22 +429,22 @@ impl<'a, T, R> Fn<(&'a mut State<T>, )> for Fail<T, R> where T:Clone, R:Clone {
 
 impl<T, R> Clone for Fail<T, R>{
     fn clone(&self)->Self {
-        Fail{message:self.message.clone(), input_type:PhantomData, output_type:PhantomData}
+        Fail{description:self.description.clone(), input_type:PhantomData, output_type:PhantomData}
     }
 
     fn clone_from(&mut self, source: &Self) {
-        self.message = source.message.clone();
+        self.description = source.description.clone();
     }
 }
 
 impl<T, R> Debug for Fail<T, R> where T:Clone, R:Clone {
     fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
-        write!(formatter, "<fail parsec: {:?}>", self.message)
+        write!(formatter, "<fail parsec: {:?}>", self.description)
     }
 }
 
 impl<T:'static, R:'static> Monad<T, R> for Fail<T, R> where T:Clone, R:Clone{}
 
-pub fn fail<T, R>(message:String) -> Fail<T, R> where T:Clone, R:Clone {
-    Fail::new(message)
+pub fn fail<T, R>(description:String) -> Fail<T, R> where T:Clone, R:Clone {
+    Fail::new(description)
 }

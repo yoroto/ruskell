@@ -137,10 +137,10 @@ where T:Clone, P:Clone, B:Clone, E:Clone, Begin:Monad<T, B>+Clone, X:Parsec<T, P
     }))
 }
 
-pub fn otherwise<T:'static, R:'static, X:'static>(p:X, message:String)->Parser<T, R>
+pub fn otherwise<T:'static, R:'static, X:'static>(p:X, description:String)->Parser<T, R>
 where T:Clone, R:Clone, X:Parsec<T, R>+Clone {
     parser(abc!(move |state : &mut State<T>|->Status<R>{
-        either(p.clone(), fail(message.clone()).clone()).parse(state)
+        either(p.clone(), fail(description.clone()).clone()).parse(state)
     }))
 }
 

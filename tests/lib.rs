@@ -1,11 +1,12 @@
 #![feature(vec_push_all)]
 #[macro_use]
 extern crate ruskell;
-use ruskell::parsec::{VecState, State, Status, Parsec, Error, Monad};
+use ruskell::parsec::{VecState, State, Status, Parsec, Monad};
 use ruskell::parsec::atom::{one, eq, eof, one_of, none_of, ne};
 use ruskell::parsec::combinator::{try, either, many, many1, between, many_tail, many1_tail};
 use std::sync::Arc;
 use std::iter::FromIterator;
+use std::error::Error;
 
 #[test]
 fn state_works() {
@@ -298,7 +299,7 @@ fn between_test_0() {
     let content = many(eq('x'));
     let re = between(quote.clone(), content, quote)(&mut state);
     if re.is_err() {
-        let msg = format!("{}", re.unwrap_err().message());
+        let msg = format!("{}", re.unwrap_err().description());
         panic!(msg);
     }
     let data = re.unwrap();
@@ -314,7 +315,7 @@ fn between_test_1() {
     let content = many(eq('x'));
     let re = prefix.then(between(quote.clone(), content, quote))(&mut state);
     if re.is_err() {
-        let msg = format!("{}", re.unwrap_err().message());
+        let msg = format!("{}", re.unwrap_err().description());
         panic!(msg);
     }
     let data = re.unwrap();
@@ -328,7 +329,7 @@ fn many_tail_test_0() {
     let content = many_tail(ne('.'), eq('.'));
     let re = content(&mut state);
     if re.is_err() {
-        let msg = format!("{}", re.unwrap_err().message());
+        let msg = format!("{}", re.unwrap_err().description());
         panic!(msg);
     }
     let data = re.unwrap();
@@ -342,7 +343,7 @@ fn many_tail_test_1() {
     let content = many_tail(one(), eof());
     let re = content(&mut state);
     if re.is_err() {
-        let msg = format!("{}", re.unwrap_err().message());
+        let msg = format!("{}", re.unwrap_err().description());
         panic!(msg);
     }
     let data = re.unwrap();
@@ -356,7 +357,7 @@ fn many1_tail_test_0() {
     let content = many1_tail(ne('.'), eq('.'));
     let re = content(&mut state);
     if re.is_err() {
-        let msg = format!("{}", re.unwrap_err().message());
+        let msg = format!("{}", re.unwrap_err().description());
         panic!(msg);
     }
     let data = re.unwrap();
@@ -370,7 +371,7 @@ fn many1_tail_test_1() {
     let content = many1_tail(one(), eof());
     let re = content(&mut state);
     if re.is_err() {
-        let msg = format!("{}", re.unwrap_err().message());
+        let msg = format!("{}", re.unwrap_err().description());
         panic!(msg);
     }
     let data = re.unwrap();
