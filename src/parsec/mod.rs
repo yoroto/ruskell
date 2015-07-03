@@ -5,7 +5,7 @@ use std::boxed::Box;
 use std::fmt::{Debug, Formatter, Display};
 use std::fmt;
 use std::clone::Clone;
-use std::convert::{From, Into};
+use std::convert::{From};
 use std::error;
 
 //Arc<Box<Closure>>
