@@ -189,16 +189,16 @@ where T:Clone, R:Clone, X:Parsec<T, R>+Clone {
     }))
 }
 
-pub fn sep_by<T:'static, Sp:'static, R:'static, Sep:'static, X:'static>(sep:Sep, parsec:X)->Parser<T, Vec<R>>
+pub fn sep_by<T:'static, Sp:'static, R:'static, Sep:'static, X:'static>(parsec:X, sep:Sep)->Parser<T, Vec<R>>
 where T:Clone, R:Clone+Debug, Sp:Clone, Sep:Parsec<T, Sp>+Clone, X:Parsec<T, R>+Clone {
     parser(abc!(move |state:&mut State<T>|->Status<Vec<R>>{
         let s = try(sep.clone());
         let p = try(parsec.clone());
-        either(sep_by1(s, p), pack(Vec::new())).parse(state)
+        either(sep_by1(p, s), pack(Vec::new())).parse(state)
     }))
 }
 
-pub fn sep_by1<T:'static, Sp:'static, R:'static, Sep:'static, X:'static>(sep:Sep, parsec:X) ->Parser<T, Vec<R>>
+pub fn sep_by1<T:'static, Sp:'static, R:'static, Sep:'static, X:'static>(parsec:X, sep:Sep) ->Parser<T, Vec<R>>
 where T:Clone, R:Clone+Debug, Sp:Clone, Sep:Parsec<T, Sp>+Clone, X:Parsec<T, R>+Clone {
     parser(abc!(move |state: &mut State<T>|->Status<Vec<R>>{
         let parsec = parsec.clone();
@@ -208,7 +208,7 @@ where T:Clone, R:Clone+Debug, Sp:Clone, Sep:Parsec<T, Sp>+Clone, X:Parsec<T, R>+
         }
         let mut rev = Vec::new();
         let head = x.ok().unwrap();
-        let tail = sep_by(sep.clone(), parsec.clone()).parse(state);
+        let tail = sep_by(parsec.clone(), sep.clone()).parse(state);
         let data = tail.unwrap();
         rev.push(head);
         rev.push_all(&data);
