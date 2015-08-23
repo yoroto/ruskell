@@ -8,12 +8,6 @@ use std::clone::Clone;
 use std::convert::{From};
 use std::error;
 
-//Arc<Box<Closure>>
-#[macro_export]
-macro_rules! abc {
-    ($x:expr) => (Arc::new(Box::new($x)));
-}
-
 pub trait State<T> {
     fn pos(&self)-> usize;
     fn seek_to(&mut self, usize)->bool;
@@ -163,19 +157,19 @@ pub type Status<T> = Result<T, ParsecError>;
 
 // A monad just return closure
 pub struct Parser<T, R> {
-    parserer: Arc<Box<Fn(&mut State<T>)->Status<R>>>,
+    parser: Arc<Box<Fn(&mut State<T>)->Status<R>>>,
 }
 
 impl<T:'static, R:'static> Parser<T, R>
 where T:Clone, R:Clone {
-    pub fn new(parserer: Arc<Box<Fn(&mut State<T>)->Status<R>>>)-> Parser<T, R> {
-        Parser{parserer:parserer.clone()}
+    pub fn new(parser: Arc<Box<Fn(&mut State<T>)->Status<R>>>)-> Parser<T, R> {
+        Parser{parser:parser.clone()}
     }
 }
 
 impl<T, R> Parsec<T, R> for Parser<T, R> where T:Clone, R:Clone {
     fn parse(&self, state: &mut State<T>) -> Status<R> {
-        (self.parserer)(state)
+        (self.parser)(state)
     }
 }
 
@@ -201,25 +195,25 @@ impl<'a, T, R> Fn<(&'a mut State<T>, )> for Parser<T, R> where T:Clone, R:Clone 
 
 impl<T, R> Clone for Parser<T, R> where T:Clone, R:Clone {
     fn clone(&self)->Self {
-        Parser{parserer:self.parserer.clone()}
+        Parser{parser:self.parser.clone()}
     }
 
     fn clone_from(&mut self, source: &Self) {
-        self.parserer = source.parserer.clone();
+        self.parser = source.parser.clone();
     }
 }
 
 impl<T, R> Debug for Parser<T, R> where T:Clone, R:Clone{
     fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
-        write!(formatter, "<closure parserer monad environment>")
+        write!(formatter, "<closure parser monad environment>")
     }
 }
 
 impl<T:'static, R:'static> Monad<T, R> for Parser<T, R> where T:Clone, R:Clone {}
 
-pub fn parser<T:'static, R:'static>(parserer: Arc<Box<Fn(&mut State<T>)->Status<R>>>)->Parser<T, R>
+pub fn parser<T:'static, R:'static>(parser: Arc<Box<Fn(&mut State<T>)->Status<R>>>)->Parser<T, R>
 where T:Clone, R:Clone {
-    Parser::new(parserer)
+    Parser::new(parser)
 }
 
 
