@@ -104,11 +104,10 @@ pub fn uinteger() -> Parser<char, String> {
 pub fn integer() ->Parser<char, String>{
     parser(abc!(|state: &mut State<char>|->Status<String>{
         either(try(eq('-')).bind(abc!(|state: &mut State<char>, _:char|-> Status<String> {
-            uinteger().parse(state).map(|x:String|->String{
-                let mut re = String::from("-");
-                re.push_str(x.as_str());
-                re
-            })
+            let x = try!(uinteger().parse(state));
+            let mut re = String::from("-");
+            re.push_str(x.as_str());
+            Ok(re)
         })), uinteger()).parse(state)
     }))
 }
@@ -133,11 +132,10 @@ pub fn ufloat() -> Parser<char, String> {
 pub fn float() -> Parser<char, String>{
     parser(abc!(|state:&mut State<char>|->Status<String>{
         either(try(eq('-')).bind(abc!(|state: &mut State<char>, _:char|-> Status<String> {
-            ufloat().parse(state).map(|x:String|->String{
-                let mut re = String::from("-");
-                re.push_str(x.as_str());
-                re
-            })
+            let x = try!(ufloat().parse(state));
+            let mut re = String::from("-");
+            re.push_str(x.as_str());
+            Ok(re)
         })), ufloat()).parse(state)
     }))
 }
