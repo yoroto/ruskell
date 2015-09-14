@@ -112,7 +112,7 @@ impl Display for ParsecError {
 pub trait Parsec<T, R>:Debug {
     fn parse(&self, &mut State<T>)->Status<R>;
 }
-// TODO: move Generic Type Param P to bind/then/over function
+
 // Type Continuation(Result) Then Pass
 pub trait Monad<T:'static, R:'static>:Parsec<T, R> where Self:Clone+'static, T:Clone, R:Clone {
     fn bind<P:'static+Clone>(self, binder:Arc<Box<Fn(&mut State<T>, R)->Status<P>>>)->Parser<T, P> {
