@@ -124,16 +124,16 @@ where T:Clone, R:Clone+Debug, X:Monad<T, R>+Clone {
     }))
 }
 
-pub fn between<T:'static, B:'static, P:'static, E:'static, X:'static, Begin:'static, End:'static>
-        (begin:Begin, parsec:X, end:End)
+pub fn between<T:'static, B:'static, P:'static, E:'static, X:'static, Open:'static, Close:'static>
+        (open:Open, close:Close, parsec:X)
         ->Parser<T, P>
-where T:Clone, P:Clone, B:Clone, E:Clone, Begin:Monad<T, B>+Clone, X:Parsec<T, P>+Clone,
-        End:Parsec<T, E>+Clone {
+where T:Clone, P:Clone, B:Clone, E:Clone, Open:Monad<T, B>+Clone, X:Parsec<T, P>+Clone,
+        Close:Parsec<T, E>+Clone {
     parser(abc!(move |state: &mut State<T>|->Status<P>{
-        let begin = begin.clone();
+        let open = open.clone();
         let parsec = parsec.clone();
-        let end = end.clone();
-        begin.then(parsec).over(end).parse(state)
+        let close = close.clone();
+        open.then(parsec).over(close).parse(state)
     }))
 }
 

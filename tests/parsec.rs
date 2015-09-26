@@ -297,7 +297,7 @@ fn between_test_0() {
     let quote = eq('\"');
 
     let content = many(eq('x'));
-    let re = between(quote.clone(), content, quote)(&mut state);
+    let re = between(quote.clone(), quote.clone(), content)(&mut state);
     if re.is_err() {
         let msg = format!("{}", re.unwrap_err().description());
         panic!(msg);
@@ -313,7 +313,7 @@ fn between_test_1() {
     let prefix = many(ne('\"'));
     let quote = eq('\"');
     let content = many(eq('x'));
-    let re = prefix.then(between(quote.clone(), content, quote))(&mut state);
+    let re = prefix.then(between(quote.clone(), quote.clone(), content))(&mut state);
     if re.is_err() {
         let msg = format!("{}", re.unwrap_err().description());
         panic!(msg);
