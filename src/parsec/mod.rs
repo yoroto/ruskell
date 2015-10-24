@@ -2,7 +2,8 @@ use std::vec::Vec;
 use std::iter::FromIterator;
 use std::sync::Arc;
 use std::boxed::Box;
-use std::fmt::{Debug, Formatter, Display};
+// use std::fmt::{Debug, Formatter, Display};
+use std::fmt::{Formatter, Display};
 use std::fmt;
 use std::clone::Clone;
 use std::convert::{From};
@@ -109,37 +110,37 @@ impl Display for ParsecError {
 }
 
 //pub trait Parsec<T:'static+Clone, R:'static+Clone>:Debug where Self:Parsec<T, R>+Clone+'static {
-pub trait Parsec<T, R>:Debug {
+pub trait Parsec<T, R> {
     fn parse(&self, &mut State<T>)->Status<R>;
 }
 
 // Type Continuation(Result) Then Pass
 pub trait Monad<T:'static, R:'static>:Parsec<T, R> where Self:Clone+'static, T:Clone, R:Clone {
     fn bind<P:'static+Clone>(self, binder:Arc<Box<Fn(&mut State<T>, R)->Status<P>>>)->Parser<T, P> {
-        parser(abc!(move |state:&mut State<T>|->Status<P>{
+        abc!(move |state:&mut State<T>|->Status<P>{
             let pre = self.parse(state);
             if pre.is_err() {
                 return Err(pre.err().unwrap())
             }
             let binder = binder.clone();
             binder(state, pre.ok().unwrap())
-        }))
+        })
     }
     fn then<P:'static+Clone, Thn:'static>(self, then:Thn)->Parser<T, P>
     where Thn:Parsec<T, P>+Clone{
         let then = then.clone();
-        parser(abc!(move |state:&mut State<T>|->Status<P>{
+        abc!(move |state:&mut State<T>|->Status<P>{
             let pre = self.parse(state);
             if pre.is_err() {
                 return Err(pre.err().unwrap())
             }
             then.parse(state)
-        }))
+        })
     }
     fn over<P:'static+Clone, Ovr:'static>(self, over:Ovr)->Parser<T, R>
     where Ovr:Parsec<T, P>+Clone{
         let over = over.clone();
-        parser(abc!(move |state:&mut State<T>|->Status<R>{
+        abc!(move |state:&mut State<T>|->Status<R>{
             let re = self.parse(state);
             if re.is_err() {
                 return re;
@@ -149,74 +150,76 @@ pub trait Monad<T:'static, R:'static>:Parsec<T, R> where Self:Clone+'static, T:C
                 return Err(o.err().unwrap())
             }
             Ok(re.ok().unwrap())
-        }))
+        })
     }
 }
 
 pub type Status<T> = Result<T, ParsecError>;
 
 // A monad just return closure
-pub struct Parser<T, R> {
-    parser: Arc<Box<Fn(&mut State<T>)->Status<R>>>,
-}
+// pub struct Parser<T, R> {
+//     parser: Arc<Box<Fn(&mut State<T>)->Status<R>>>,
+// }
 
-impl<T:'static, R:'static> Parser<T, R>
-where T:Clone, R:Clone {
-    pub fn new(parser: Arc<Box<Fn(&mut State<T>)->Status<R>>>)-> Parser<T, R> {
-        Parser{parser:parser.clone()}
-    }
-}
+pub type Parser<T, R> = Arc<Box<Fn(&mut State<T>)->Status<R>>>;
+
+// impl<T:'static, R:'static> Parser<T, R>
+// where T:Clone, R:Clone {
+//     pub fn new(parser: Arc<Box<Fn(&mut State<T>)->Status<R>>>)-> Parser<T, R> {
+//         Parser{parser:parser.clone()}
+//     }
+// }
 
 impl<T, R> Parsec<T, R> for Parser<T, R> where T:Clone, R:Clone {
     fn parse(&self, state: &mut State<T>) -> Status<R> {
-        (self.parser)(state)
+        self(state)
     }
 }
 
-impl<'a, T, R> FnOnce<(&'a mut State<T>, )> for Parser<T, R> where T:Clone, R:Clone {
-    type Output = Status<R>;
-    extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<R> {
-        panic!("Not implement!");
-    }
-}
+// impl<'a, T, R> FnOnce<(&'a mut State<T>, )> for Parser<T, R> where T:Clone, R:Clone {
+//     type Output = Status<R>;
+//     extern "rust-call" fn call_once(self, _: (&'a mut State<T>, )) -> Status<R> {
+//         panic!("Not implement!");
+//     }
+// }
+//
+// impl<'a, T, R> FnMut<(&'a mut State<T>, )> for Parser<T, R> where T:Clone, R:Clone {
+//     extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<R> {
+//         panic!("Not implement!");
+//     }
+// }
+//
+// impl<'a, T, R> Fn<(&'a mut State<T>, )> for Parser<T, R> where T:Clone, R:Clone {
+//     extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<R> {
+//         let (state, ) = args;
+//         self.parse(state)
+//     }
+// }
 
-impl<'a, T, R> FnMut<(&'a mut State<T>, )> for Parser<T, R> where T:Clone, R:Clone {
-    extern "rust-call" fn call_mut(&mut self, _: (&'a mut State<T>, )) -> Status<R> {
-        panic!("Not implement!");
-    }
-}
+// impl<T, R> Clone for Parser<T, R> where T:Clone, R:Clone {
+//     fn clone(&self)->Self {
+//         Parser{parser:self.parser.clone()}
+//     }
+//
+//     fn clone_from(&mut self, source: &Self) {
+//         self.parser = source.parser.clone();
+//     }
+// }
 
-impl<'a, T, R> Fn<(&'a mut State<T>, )> for Parser<T, R> where T:Clone, R:Clone {
-    extern "rust-call" fn call(&self, args: (&'a mut State<T>, )) -> Status<R> {
-        let (state, ) = args;
-        self.parse(state)
-    }
-}
-
-impl<T, R> Clone for Parser<T, R> where T:Clone, R:Clone {
-    fn clone(&self)->Self {
-        Parser{parser:self.parser.clone()}
-    }
-
-    fn clone_from(&mut self, source: &Self) {
-        self.parser = source.parser.clone();
-    }
-}
-
-impl<T, R> Debug for Parser<T, R> where T:Clone, R:Clone{
-    fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
-        write!(formatter, "<closure parser monad environment>")
-    }
-}
+// impl<T, R> Debug for Parser<T, R> where T:Clone, R:Clone{
+//     fn fmt(&self, formatter:&mut Formatter)->Result<(), fmt::Error> {
+//         write!(formatter, "<closure parser monad environment>")
+//     }
+// }
 
 impl<T:'static, R:'static> Monad<T, R> for Parser<T, R> where T:Clone, R:Clone {}
 
-pub fn parser<T:'static, R:'static>(parser: Arc<Box<Fn(&mut State<T>)->Status<R>>>)->Parser<T, R>
-where T:Clone, R:Clone {
-    Parser::new(parser)
-}
+// pub fn parser<T:'static, R:'static>(parser: Arc<Box<Fn(&mut State<T>)->Status<R>>>)->Parser<T, R>
+// where T:Clone, R:Clone {
+//     Parser::new(parser)
+// }
 
 
 pub mod atom;
 pub mod combinator;
-pub mod text;
+// pub mod text;

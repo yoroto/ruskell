@@ -3,7 +3,7 @@
 extern crate ruskell;
 use ruskell::parsec::{VecState, State, Status, Parsec, Monad};
 use ruskell::parsec::atom::{one, eq, eof, one_of, none_of, ne};
-use ruskell::parsec::combinator::{try, either, many, many1, between, many_tail, many1_tail};
+use ruskell::parsec::combinator::{try, either, many, many1, between, many_tail, many1_tail, Either, Or};
 use std::sync::Arc;
 use std::iter::FromIterator;
 use std::error::Error;
@@ -124,7 +124,7 @@ fn either_test_2() {
     let a = eq('a');
     let b = eq('b');
     let c = eq('c');
-    let e = either(try(b), try(c)).or(try(a));
+    let e:Either<char, char> = either(try(b), try(c)).or(try(a));
     let re = e(&mut state);
     assert!(re.is_ok());
     let data = re.unwrap();
